@@ -1,0 +1,416 @@
+/* ==================== Enhanced Sidebar Styling ==================== */
+
+/* Project Header */
+.sidebar-project {
+    padding: 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.project-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.project-icon {
+    font-size: 1.2rem;
+}
+
+.project-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Navigation Sections */
+.sidebar-section {
+    padding: 20px 10px 10px;
+}
+
+.section-title {
+    padding: 0 15px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+}
+
+/* Expandable Settings Section */
+.nav-item.expandable {
+    position: relative;
+}
+
+.nav-item.expandable .expand-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    fill: rgba(255,255,255,0.5);
+    transition: transform 0.3s;
+}
+
+.nav-item.expandable.expanded .expand-icon {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.nav-subitems {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    padding-left: 20px;
+}
+
+.nav-subitems.show {
+    max-height: 500px;
+    transition: max-height 0.3s ease-in;
+}
+
+.nav-subitem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.nav-subitem:before {
+    content: '•';
+    color: rgba(255,255,255,0.3);
+}
+
+.nav-subitem:hover {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.9);
+    padding-left: 18px;
+}
+
+.nav-subitem.active {
+    background: rgba(76, 175, 80, 0.2);
+    color: var(--color-primary);
+}
+
+/* Menu Section with Sub-items */
+.menu-section {
+    padding: 0;
+}
+
+.menu-section .nav-item {
+    margin-bottom: 2px;
+}
+
+/* Language Selector */
+.sidebar-language {
+    padding: 15px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.language-selector {
+    position: relative;
+}
+
+.language-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 15px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.8);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.language-button:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+}
+
+.language-current {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.language-flag {
+    font-size: 1.2rem;
+}
+
+.language-dropdown {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    margin-bottom: 8px;
+    background: #2a2a3e;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+    transition: all 0.3s;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+}
+
+.language-dropdown.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+}
+
+.language-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    color: rgba(255,255,255,0.8);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.language-option:last-child {
+    border-bottom: none;
+}
+
+.language-option:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
+.language-option.active {
+    background: rgba(76, 175, 80, 0.2);
+    color: var(--color-primary);
+}
+
+.language-option .language-flag {
+    font-size: 1.3rem;
+}
+
+.language-option .language-name {
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.language-option .check-icon {
+    width: 16px;
+    height: 16px;
+    fill: var(--color-primary);
+    opacity: 0;
+}
+
+.language-option.active .check-icon {
+    opacity: 1;
+}
+
+/* Chevron Icon for Language Button */
+.chevron-icon {
+    width: 14px;
+    height: 14px;
+    fill: rgba(255,255,255,0.5);
+    transition: transform 0.3s;
+}
+
+.language-dropdown.show ~ .language-button .chevron-icon {
+    transform: rotate(180deg);
+}
+
+/* Go to Website Link Highlight */
+.nav-item.website-link {
+    background: rgba(33, 150, 243, 0.15);
+    color: #64B5F6;
+}
+
+.nav-item.website-link:hover {
+    background: rgba(33, 150, 243, 0.25);
+    color: #90CAF9;
+}
+
+/* Tables & Zones Link */
+.nav-item.tables-link svg {
+    fill: #FF9800;
+}
+
+/* Enhanced Hover States */
+.sidebar-nav .nav-item {
+    position: relative;
+}
+
+.sidebar-nav .nav-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 0;
+    background: var(--color-primary);
+    border-radius: 0 3px 3px 0;
+    transition: height 0.2s;
+}
+
+.sidebar-nav .nav-item.active::before {
+    height: 70%;
+}
+
+/* Icon Animations on Hover */
+.nav-item svg {
+    transition: transform 0.2s;
+}
+
+.nav-item:hover svg {
+    transform: scale(1.1);
+}
+
+/* Dark Theme Adjustments */
+[data-theme="dark"] .sidebar-project {
+    border-bottom-color: rgba(255,255,255,0.05);
+}
+
+[data-theme="dark"] .language-button {
+    background: rgba(255,255,255,0.03);
+}
+
+[data-theme="dark"] .language-dropdown {
+    background: #1a1a2e;
+    box-shadow: 0 -4px 30px rgba(0,0,0,0.5);
+}
+
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+    .sidebar-project {
+        padding: 15px 10px;
+    }
+
+    .project-name {
+        font-size: 0.9rem;
+    }
+
+    .project-badge {
+        display: none;
+    }
+
+    .section-title {
+        display: none;
+    }
+
+    .nav-item span,
+    .nav-subitem span,
+    .language-current span {
+        display: none;
+    }
+
+    .nav-subitems {
+        padding-left: 0;
+    }
+
+    .sidebar-language {
+        padding: 10px;
+    }
+
+    .language-flag {
+        font-size: 1.4rem;
+    }
+
+    .language-dropdown {
+        position: fixed;
+        left: 70px;
+        right: auto;
+        width: 200px;
+    }
+
+    /* Sidebar Tooltips on collapsed state */
+    .sidebar-nav .nav-item[data-tooltip]::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #2d2d3e;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        margin-left: 8px;
+        z-index: 200;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    .sidebar-nav .nav-item[data-tooltip]:hover::after {
+        opacity: 1;
+    }
+}
+
+/* Scrollbar Styling for Sidebar */
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Notification Badge on Nav Items */
+.nav-item .badge {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: #e74c3c;
+    color: white;
+    border-radius: 9px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}

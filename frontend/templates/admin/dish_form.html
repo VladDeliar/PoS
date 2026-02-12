@@ -1,0 +1,333 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}{{ 'Створити страву' if mode == 'create' else 'Редагувати страву' }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/dish_form.css">
+{% endblock %}
+
+{% block content %}
+<div class="dish-form-page" x-data="dishFormApp()" x-init="init()">
+    <!-- Green Header Bar -->
+    <div class="dish-form-header">
+        <button class="back-button" @click="goBack()">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/></svg>
+            Назад
+        </button>
+        <h1>{{ 'Створити страву' if mode == 'create' else 'Редагувати страву' }}</h1>
+        <div class="header-actions">
+            {% if mode == 'edit' %}
+            <div class="nav-buttons">
+                <button class="nav-button" @click="navigateToPrev()" :disabled="!prevDishId" title="Попередня страва">
+                    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"/></svg>
+                    Попередня
+                </button>
+                <button class="nav-button" @click="navigateToNext()" :disabled="!nextDishId" title="Наступна страва">
+                    Наступна
+                    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/></svg>
+                </button>
+            </div>
+            {% endif %}
+            <div class="save-buttons">
+                <button class="save-btn" @click="saveAndStay()" title="Зберегти зміни">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/></svg>
+                    Зберегти
+                </button>
+                <button class="save-exit-btn" @click="saveAndExit()" title="Зберегти та повернутися до списку">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/></svg>
+                    Зберегти і вийти
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-column Layout -->
+    <div class="dish-form-content">
+        <!-- Left Column: Form -->
+        <div class="form-column">
+            <form @submit.prevent="saveDish()">
+                <!-- Category -->
+                <div class="form-group">
+                    <label>Обрати категорію*</label>
+                    <select x-model="form.category_id" required>
+                        <template x-for="cat in categories" :key="cat._id">
+                            <option :value="cat._id" x-text="cat.name"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <!-- Name -->
+                <div class="form-group">
+                    <label>Назва страви* <span class="char-count" x-text="form.name.length + '/150'"></span></label>
+                    <input type="text" x-model="form.name" maxlength="150" required>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group">
+                    <label>Опис <span class="char-count" x-text="form.description.length + '/500'"></span></label>
+                    <textarea x-model="form.description" maxlength="500" rows="4"></textarea>
+                </div>
+
+                <!-- Modifiers Radio -->
+                <div class="form-group">
+                    <label>Модифікатори</label>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="has_modifiers" :checked="form.modifier_groups.length === 0" @change="form.modifier_groups = []">
+                            Без модифікацій
+                        </label>
+                        <label>
+                            <input type="radio" name="has_modifiers" :checked="form.modifier_groups.length > 0">
+                            З модифікаціями
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Price & Cook Time Row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ціна, грн за од.*</label>
+                        <input type="number" step="0.01" x-model="form.price" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Час приготування, хв.</label>
+                        <input type="text" x-model="form.cook_time" placeholder="10 хв">
+                    </div>
+                </div>
+
+                <!-- Weight -->
+                <div class="form-group">
+                    <label>Вага</label>
+                    <input type="text" x-model="form.weight" placeholder="250 мл">
+                </div>
+
+                <!-- Alcohol Checkbox -->
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" x-model="form.is_alcohol">
+                        Алкоголь
+                    </label>
+                </div>
+
+                <!-- Image URL -->
+                <div class="form-group">
+                    <label>URL зображення</label>
+                    <input type="text" x-model="form.image" placeholder="/static/img/dish.jpg">
+                </div>
+
+                <!-- Modifier Groups -->
+                <div class="form-group" x-show="modifiers.length > 0">
+                    <label>Набір доповнень</label>
+                    <div class="modifiers-list">
+                        <template x-for="mod in modifiers" :key="mod._id">
+                            <label class="checkbox-label">
+                                <input type="checkbox"
+                                       :value="mod._id"
+                                       :checked="form.modifier_groups.includes(mod._id)"
+                                       @change="toggleModifier(mod._id)">
+                                <span x-text="mod.name"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Daily Production Norm -->
+                <div class="form-group">
+                    <label>Денна норма виробництва</label>
+                    <input type="number" x-model="form.daily_production_norm" placeholder="30" min="0">
+                    <small>Залиште порожнім якщо не потрібно відстежувати</small>
+                </div>
+            </form>
+        </div>
+
+        <!-- Right Column: Image & Tags -->
+        <div class="sidebar-column">
+            <!-- Status & Availability -->
+            <div class="status-section">
+                <label class="toggle-switch">
+                    <input type="checkbox" x-model="form.available" style="display: none;">
+                    <span class="toggle-slider"></span>
+                    <span x-text="form.available ? 'Активна' : 'Неактивна'"></span>
+                </label>
+                <select class="availability-select">
+                    <option value="available" :selected="form.available">В наявності</option>
+                    <option value="out_of_stock" :selected="!form.available">Немає в наявності</option>
+                </select>
+            </div>
+
+            <!-- Image Preview -->
+            <div class="image-preview">
+                <img :src="form.image || '/static/img/placeholder.svg'"
+                     alt="Dish preview"
+                     onerror="this.src='/static/img/placeholder.svg'">
+                <div class="image-requirements">
+                    <p>Вимоги до фотографії:</p>
+                    <p>Формат – JPG, PNG</p>
+                    <p>Розмір – макс 3 МБ</p>
+                    <p>Рекомендоване співвідношення сторін – 1024 x 768</p>
+                </div>
+            </div>
+
+            <!-- Tags Section -->
+            <div class="tags-section" x-show="tags.length > 0">
+                <h3>Мітки</h3>
+                <div class="tags-grid">
+                    <template x-for="tag in tags" :key="tag._id">
+                        <label class="tag-checkbox"
+                               :style="form.tags.includes(tag._id) ? 'background-color: ' + tag.color + '; color: white; border-color: ' + tag.color : 'border-color: ' + tag.color">
+                            <input type="checkbox"
+                                   :value="tag._id"
+                                   :checked="form.tags.includes(tag._id)"
+                                   @change="toggleTag(tag._id)">
+                            <span x-text="tag.name"></span>
+                        </label>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const categoriesData = {{ categories | tojson }};
+const modifiersData = {{ modifiers | tojson }};
+const tagsData = {{ tags | tojson }};
+const dishData = {{ dish | tojson if dish else 'null' }};
+const mode = '{{ mode }}';
+const prevDishId = {{ prev_dish_id | tojson }};
+const nextDishId = {{ next_dish_id | tojson }};
+
+function dishFormApp() {
+    return {
+        mode: mode,
+        categories: categoriesData || [],
+        modifiers: modifiersData || [],
+        tags: tagsData || [],
+        prevDishId: prevDishId,
+        nextDishId: nextDishId,
+
+        form: {
+            name: '',
+            category_id: '',
+            price: 0,
+            description: '',
+            image: '/static/img/placeholder.svg',
+            weight: '',
+            cook_time: '',
+            available: true,
+            modifier_groups: [],
+            daily_production_norm: null,
+            tags: [],
+            is_alcohol: false
+        },
+
+        init() {
+            console.log('Initializing dishFormApp...');
+            console.log('Mode:', this.mode);
+            console.log('Dish data:', dishData);
+            console.log('Categories:', this.categories);
+            console.log('Prev ID:', this.prevDishId);
+            console.log('Next ID:', this.nextDishId);
+
+            if (this.categories.length > 0) {
+                this.form.category_id = this.categories[0]._id;
+            }
+
+            if (dishData) {
+                this.form = {
+                    name: dishData.name || '',
+                    category_id: dishData.category_id || (this.categories[0]?._id || ''),
+                    price: dishData.price || 0,
+                    description: dishData.description || '',
+                    image: dishData.image || '/static/img/placeholder.svg',
+                    weight: dishData.weight || '',
+                    cook_time: dishData.cook_time || '',
+                    available: dishData.available !== undefined ? dishData.available : true,
+                    modifier_groups: dishData.modifier_groups || [],
+                    daily_production_norm: dishData.daily_production_norm || null,
+                    tags: dishData.tags || [],
+                    is_alcohol: dishData.is_alcohol || false
+                };
+            }
+
+            console.log('Form after init:', this.form);
+        },
+
+        toggleModifier(modId) {
+            const idx = this.form.modifier_groups.indexOf(modId);
+            if (idx > -1) {
+                this.form.modifier_groups.splice(idx, 1);
+            } else {
+                this.form.modifier_groups.push(modId);
+            }
+        },
+
+        toggleTag(tagId) {
+            const idx = this.form.tags.indexOf(tagId);
+            if (idx > -1) {
+                this.form.tags.splice(idx, 1);
+            } else {
+                this.form.tags.push(tagId);
+            }
+        },
+
+        async saveDish(redirect = true) {
+            try {
+                const url = this.mode === 'create'
+                    ? '/api/products'
+                    : `/api/products/${dishData._id}`;
+                const method = this.mode === 'create' ? 'POST' : 'PUT';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.form)
+                });
+
+                if (!response.ok) throw new Error('Save failed');
+
+                if (redirect) {
+                    // Redirect back to assortment
+                    window.location.href = '/admin/assortment';
+                } else {
+                    // Show success message and stay on page
+                    alert('Зміни збережено успішно!');
+                }
+            } catch (error) {
+                console.error('Error saving dish:', error);
+                alert('Помилка при збереженні страви');
+            }
+        },
+
+        async saveAndStay() {
+            console.log('Saving and staying...');
+            await this.saveDish(false);
+        },
+
+        async saveAndExit() {
+            console.log('Saving and exiting...');
+            await this.saveDish(true);
+        },
+
+        goBack() {
+            console.log('Going back to assortment...');
+            window.location.href = '/admin/assortment';
+        },
+
+        navigateToPrev() {
+            console.log('Navigating to previous:', this.prevDishId);
+            if (this.prevDishId) {
+                window.location.href = `/admin/dishes/edit/${this.prevDishId}`;
+            }
+        },
+
+        navigateToNext() {
+            console.log('Navigating to next:', this.nextDishId);
+            if (this.nextDishId) {
+                window.location.href = `/admin/dishes/edit/${this.nextDishId}`;
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

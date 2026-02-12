@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Відстеження замовлення - {{ restaurant_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/track_order.css">
+{% endblock %}
+
+{% block body %}
+<div x-data="trackOrderApp('{{ order_id }}')" x-init="init()" class="track-container">
+    <!-- Loading State -->
+    <div x-show="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Завантаження замовлення...</p>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <h3>Помилка завантаження</h3>
+        <p x-text="error"></p>
+        <button @click="loadOrder()" class="btn-retry">Спробувати знову</button>
+    </div>
+
+    <!-- Main Content -->
+    <div x-show="!loading && !error && order" class="track-content">
+        <!-- Header -->
+        <header class="track-header">
+            <a href="/menu" class="back-link">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
+                </svg>
+                Меню
+            </a>
+            <div class="order-info">
+                <h1>Замовлення <span x-text="order?.order_number"></span></h1>
+                <p x-show="order?.table_number" class="table-num">
+                    Столик <strong x-text="order?.table_number"></strong>
+                </p>
+            </div>
+            <div class="ws-indicator" :class="{ connected: wsConnected }">
+                <span class="ws-dot"></span>
+                <span x-text="wsConnected ? 'Онлайн' : 'Підключення...'"></span>
+            </div>
+        </header>
+
+        <!-- Status Progress Bar -->
+        <div class="status-progress" role="progressbar" :aria-valuenow="['new','preparing','ready','completed'].indexOf(order?.status) + 1" aria-valuemin="1" aria-valuemax="4" :aria-label="'Статус замовлення: крок ' + (['new','preparing','ready','completed'].indexOf(order?.status) + 1) + ' з 4'">
+            <div class="progress-step" :class="{
+                active: order?.status === 'new',
+                completed: ['preparing', 'ready', 'completed'].includes(order?.status)
+            }">
+                <div class="step-circle">
+                    <svg x-show="['preparing', 'ready', 'completed'].includes(order?.status)" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
+                    </svg>
+                    <span x-show="!['preparing', 'ready', 'completed'].includes(order?.status)">1</span>
+                </div>
+                <div class="step-label">Отримано</div>
+            </div>
+
+            <div class="progress-line" :class="{
+                filled: ['preparing', 'ready', 'completed'].includes(order?.status)
+            }"></div>
+
+            <div class="progress-step" :class="{
+                active: order?.status === 'preparing',
+                completed: ['ready', 'completed'].includes(order?.status)
+            }">
+                <div class="step-circle">
+                    <svg x-show="['ready', 'completed'].includes(order?.status)" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
+                    </svg>
+                    <span x-show="!['ready', 'completed'].includes(order?.status)">2</span>
+                </div>
+                <div class="step-label">Готується</div>
+            </div>
+
+            <div class="progress-line" :class="{
+                filled: ['ready', 'completed'].includes(order?.status)
+            }"></div>
+
+            <div class="progress-step" :class="{
+                active: order?.status === 'ready',
+                completed: order?.status === 'completed'
+            }">
+                <div class="step-circle">
+                    <svg x-show="order?.status === 'completed'" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/>
+                    </svg>
+                    <span x-show="order?.status !== 'completed'">3</span>
+                </div>
+                <div class="step-label">Готово</div>
+            </div>
+        </div>
+
+        <!-- Status Message -->
+        <div class="status-message" :class="'status-' + order?.status">
+            <template x-if="order?.status === 'new'">
+                <div>
+                    <h3>🕐 Замовлення прийнято</h3>
+                    <p>Зачекайте, кухня почне готувати</p>
+                </div>
+            </template>
+            <template x-if="order?.status === 'preparing'">
+                <div>
+                    <h3>👨‍🍳 Готується</h3>
+                    <p>Ваше замовлення готують зараз</p>
+                </div>
+            </template>
+            <template x-if="order?.status === 'ready'">
+                <div>
+                    <h3>✅ Готово!</h3>
+                    <p>Ваше замовлення готове до видачі</p>
+                </div>
+            </template>
+            <template x-if="order?.status === 'completed'">
+                <div>
+                    <h3>🎉 Завершено</h3>
+                    <p>Смачного! Дякуємо за замовлення</p>
+                </div>
+            </template>
+        </div>
+
+        <!-- Order Items -->
+        <div class="order-section">
+            <h3>Ваше замовлення</h3>
+            <div class="order-items">
+                <template x-for="item in order?.items || []" :key="item.product_id">
+                    <div class="order-item">
+                        <div class="item-qty" x-text="item.qty + 'x'"></div>
+                        <div class="item-details">
+                            <div class="item-name" x-text="item.name"></div>
+                            <div x-show="item.modifiers && item.modifiers.length > 0" class="item-modifiers">
+                                <template x-for="mod in item.modifiers" :key="mod.option_name">
+                                    <span class="modifier-tag" x-text="mod.option_name"></span>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="item-price" x-text="(item.price * item.qty) + ' грн'"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Order Total -->
+        <div class="order-section">
+            <div class="order-summary">
+                <template x-if="order?.discount_amount > 0">
+                    <div class="summary-row">
+                        <span>Сума:</span>
+                        <span x-text="order?.subtotal + ' грн'"></span>
+                    </div>
+                    <div class="summary-row discount">
+                        <span>Знижка:</span>
+                        <span x-text="'-' + order?.discount_amount + ' грн'"></span>
+                    </div>
+                </template>
+                <div class="summary-row total">
+                    <span>Всього:</span>
+                    <span x-text="order?.total + ' грн'"></span>
+                </div>
+                <div class="payment-notice">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path fill="currentColor" d="M21,18V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V6H12C10.89,6 10,6.9 10,8V16A2,2 0 0,0 12,18M12,16H22V8H12M16,13.5A1.5,1.5 0 0,1 14.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,12A1.5,1.5 0 0,1 16,13.5Z"/>
+                    </svg>
+                    Оплата на касі
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="track-actions">
+            <button @click="showCallWaiter = true" class="btn-waiter">
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                    <path fill="currentColor" d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z"/>
+                </svg>
+                Покликати офіціанта
+            </button>
+            <a href="/menu" class="btn-menu">Повернутись до меню</a>
+        </div>
+
+        <!-- Order Time -->
+        <div class="order-meta">
+            <p class="order-time">
+                Замовлено: <span x-text="formatTime(order?.created_at)"></span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Call Waiter Modal -->
+    <div class="modal" x-show="showCallWaiter" x-transition @click.self="showCallWaiter = false" role="dialog" aria-modal="true" aria-label="Покликати офіціанта">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Покликати офіціанта</h3>
+                <button @click="showCallWaiter = false" aria-label="Закрити"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p>Ваш номер телефону (опціонально):</p>
+                <input type="tel"
+                       x-model="waiterPhone"
+                       placeholder="+380..."
+                       class="phone-input">
+                <p class="help-text">Офіціант підійде до вашого столика</p>
+            </div>
+            <div class="modal-footer">
+                <button @click="showCallWaiter = false" class="btn-cancel">Скасувати</button>
+                <button @click="callWaiter()" class="btn-confirm" :disabled="callingWaiter">
+                    <span x-show="!callingWaiter">Покликати</span>
+                    <span x-show="callingWaiter">Викликається...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast success" x-show="showToast" x-transition role="alert" aria-live="polite">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z"/>
+        </svg>
+        <span x-text="toastMessage"></span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script src="/static/js/track_order.js"></script>
+{% endblock %}

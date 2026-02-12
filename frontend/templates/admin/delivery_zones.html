@@ -1,0 +1,232 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Зони доставки - Admin{% endblock %}
+
+{% block page_title %}Зони доставки{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css" />
+<link rel="stylesheet" href="/static/css/delivery_zones.css">
+{% endblock %}
+
+{% block content %}
+<div class="zones-page" x-data="deliveryZonesApp()" x-init="init()">
+    <div class="zones-layout">
+        <!-- Map Section -->
+        <div class="map-section">
+            <div class="settings-card">
+                <div class="card-header">
+                    <h3>Карта зон</h3>
+                    <span class="badge" x-text="zones.length + ' зон'"></span>
+                </div>
+
+                <!-- Drawing Toolbar (shown only for polygon mode) -->
+                <div class="drawing-toolbar" x-show="form.zone_type === 'polygon' && !editingZone">
+                    <button type="button" class="toolbar-btn" @click="startDrawing()" x-show="!isDrawing">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="currentColor" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M13,7H11V11H7V13H11V17H13V13H17V11H13V7Z"/>
+                        </svg>
+                        Почати малювання
+                    </button>
+                    <button type="button" class="toolbar-btn" @click="cancelDrawing()" x-show="isDrawing">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                        </svg>
+                        Скасувати
+                    </button>
+                    <span class="toolbar-hint" x-show="isDrawing">
+                        Клікайте на карті для створення точок полігону
+                    </span>
+                </div>
+
+                <div id="map" class="map-container"></div>
+                <div class="map-legend">
+                    <template x-for="zone in zones" :key="zone._id">
+                        <div class="legend-item">
+                            <span class="color-dot" :style="{ background: zone.color }"></span>
+                            <span x-text="zone.name"></span>
+                            <span x-show="zone.zone_type === 'radius'" class="legend-radius" x-text="zone.radius_km + ' км'"></span>
+                            <span x-show="zone.zone_type === 'polygon'" class="badge badge-polygon">Полігон</span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Section -->
+        <div class="panel-section">
+            <!-- Zone Form -->
+            <div class="settings-card zone-form-card">
+                <div class="card-header">
+                    <h3 x-text="editingZone ? 'Редагувати зону' : 'Нова зона'"></h3>
+                    <button class="btn-icon" @click="newZone()" title="Нова зона" x-show="editingZone">
+                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                    </button>
+                </div>
+                <form @submit.prevent="saveZone()" class="zone-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="zone-name">Назва зони</label>
+                            <input type="text" id="zone-name" x-model="form.name" required placeholder="Центр">
+                        </div>
+                        <div class="form-group">
+                            <label for="zone-color">Колір</label>
+                            <div class="color-input-wrapper">
+                                <input type="color" id="zone-color" x-model="form.color">
+                                <span class="color-value" x-text="form.color"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Zone Type Selector -->
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label>Тип зони</label>
+                            <div class="zone-type-selector">
+                                <label class="type-option" :class="{ active: form.zone_type === 'radius' }">
+                                    <input type="radio" name="zone_type" value="radius" x-model="form.zone_type" @change="onZoneTypeChange()">
+                                    <div class="type-option-content">
+                                        <svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                                        <span>Радіус</span>
+                                        <small>Кругла зона від центру</small>
+                                    </div>
+                                </label>
+                                <label class="type-option" :class="{ active: form.zone_type === 'polygon' }">
+                                    <input type="radio" name="zone_type" value="polygon" x-model="form.zone_type" @change="onZoneTypeChange()">
+                                    <div class="type-option-content">
+                                        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 2 L22 8 L19 20 L5 20 L2 8 Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                                        <span>Полігон</span>
+                                        <small>Довільна форма</small>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Radius-specific fields (show only for radius type) -->
+                    <div class="form-row" x-show="form.zone_type === 'radius'">
+                        <div class="form-group">
+                            <label for="zone-radius">Радіус (км)</label>
+                            <input type="number" id="zone-radius" x-model.number="form.radius_km"
+                                   :required="form.zone_type === 'radius'" min="0.1" max="50" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label for="zone-priority">Пріоритет</label>
+                            <input type="number" id="zone-priority" x-model.number="form.priority" min="0" step="1">
+                        </div>
+                    </div>
+
+                    <!-- Polygon drawing instructions (show only for polygon type) -->
+                    <div x-show="form.zone_type === 'polygon'" class="polygon-instructions">
+                        <div class="instruction-card">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path fill="currentColor" d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z"/>
+                            </svg>
+                            <div>
+                                <strong>Намалюйте зону на карті</strong>
+                                <p>Використовуйте інструменти малювання на карті для створення зони довільної форми.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="zone-fee">Вартість доставки (₴)</label>
+                            <input type="number" id="zone-fee" x-model.number="form.delivery_fee" required min="0" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="zone-min">Мін. замовлення (₴)</label>
+                            <input type="number" id="zone-min" x-model.number="form.min_order_amount" min="0" step="1">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="zone-free">Безкоштовна від (₴)</label>
+                            <input type="number" id="zone-free" x-model.number="form.free_delivery_threshold" min="0" step="1" placeholder="Не встановлено">
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" x-model="form.enabled">
+                                <span>Активна зона</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+                            <span x-text="editingZone ? 'Зберегти' : 'Створити'"></span>
+                        </button>
+                        <button type="button" class="btn btn-danger" @click="deleteZone()" x-show="editingZone">
+                            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+                            <span>Видалити</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary" @click="newZone()" x-show="editingZone">
+                            Скасувати
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Zone List -->
+            <div class="settings-card zone-list-card">
+                <div class="card-header">
+                    <h3>Список зон</h3>
+                    <button class="btn btn-sm btn-primary" @click="newZone()">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                        Нова зона
+                    </button>
+                </div>
+                <div class="zone-list-wrapper">
+                    <table class="zone-list">
+                        <thead>
+                            <tr>
+                                <th>Назва</th>
+                                <th>Радіус</th>
+                                <th>Вартість</th>
+                                <th>Мін.</th>
+                                <th>Активна</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="zone in zones" :key="zone._id">
+                                <tr class="zone-row"
+                                    :class="{ selected: editingZone && editingZone._id === zone._id }"
+                                    @click="selectZone(zone)">
+                                    <td>
+                                        <span class="color-preview" :style="{ background: zone.color }"></span>
+                                        <span x-text="zone.name"></span>
+                                    </td>
+                                    <td>
+                                        <span x-show="zone.zone_type === 'radius'" x-text="zone.radius_km + ' км'"></span>
+                                        <span x-show="zone.zone_type === 'polygon'" class="badge badge-polygon">Полігон</span>
+                                    </td>
+                                    <td x-text="zone.delivery_fee + ' ₴'"></td>
+                                    <td x-text="zone.min_order_amount + ' ₴'"></td>
+                                    <td>
+                                        <span class="status-badge" :class="zone.enabled ? 'active' : 'inactive'" x-text="zone.enabled ? '✓' : '—'"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="zones.length === 0">
+                                <td colspan="5" class="empty-state">Немає зон доставки</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" :class="{ show: showToast, error: toastError }" x-text="toastMessage"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js"></script>
+<script src="/static/js/delivery_zones.js"></script>
+{% endblock %}

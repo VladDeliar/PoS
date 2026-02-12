@@ -1,0 +1,719 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Page Builder - Admin{% endblock %}
+{% block page_title %}Page Builder{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/store_design.css">
+{% endblock %}
+
+{% block content %}
+<div x-data="pageBuilderApp()" x-init="init()" @keydown.window="handleKeyboard($event)">
+
+    <!-- Top Toolbar -->
+    <div class="builder-toolbar">
+        <div class="toolbar-left">
+            <button class="toolbar-btn" @click="undo()" :disabled="historyIndex <= 0" title="Undo (Ctrl+Z)">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z"/></svg>
+            </button>
+            <button class="toolbar-btn" @click="redo()" :disabled="historyIndex >= history.length - 1" title="Redo (Ctrl+Y)">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M18.4,10.6C16.55,9 14.15,8 11.5,8C6.85,8 2.92,11.03 1.54,15.22L3.9,16C4.95,12.81 7.95,10.5 11.5,10.5C13.45,10.5 15.23,11.22 16.62,12.38L13,16H22V7L18.4,10.6Z"/></svg>
+            </button>
+            <div class="toolbar-divider"></div>
+            <button class="toolbar-btn" @click="showBrandingPanel = !showBrandingPanel; editingItem = null" :class="{ active: showBrandingPanel }" title="Branding Settings">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M14.5,8A1.5,1.5 0 0,1 13,6.5A1.5,1.5 0 0,1 14.5,5A1.5,1.5 0 0,1 16,6.5A1.5,1.5 0 0,1 14.5,8M9.5,8A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 9.5,5A1.5,1.5 0 0,1 11,6.5A1.5,1.5 0 0,1 9.5,8M6.5,12A1.5,1.5 0 0,1 5,10.5A1.5,1.5 0 0,1 6.5,9A1.5,1.5 0 0,1 8,10.5A1.5,1.5 0 0,1 6.5,12M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21A1.5,1.5 0 0,0 13.5,19.5C13.5,19.11 13.35,18.76 13.11,18.5C12.88,18.23 12.73,17.88 12.73,17.5A1.5,1.5 0 0,1 14.23,16H16A5,5 0 0,0 21,11C21,6.58 16.97,3 12,3Z"/></svg>
+                <span>Branding</span>
+            </button>
+        </div>
+        <div class="toolbar-center">
+            <span class="toolbar-title">Page Builder</span>
+        </div>
+        <div class="toolbar-right">
+            <div class="viewport-toggle">
+                <button class="viewport-btn" :class="{ active: previewViewport === 'desktop' }" @click="previewViewport = 'desktop'" title="Desktop">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
+                </button>
+                <button class="viewport-btn" :class="{ active: previewViewport === 'mobile' }" @click="previewViewport = 'mobile'" title="Mobile">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></svg>
+                </button>
+            </div>
+            <button class="toolbar-btn btn-save" @click="saveConfig()" :disabled="saving">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+                <span x-text="saving ? 'Saving...' : 'Save'"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Builder Area -->
+    <div class="builder-main">
+
+        <!-- LEFT: Structure Tree -->
+        <div class="builder-tree">
+            <div class="tree-header">
+                <h3>Structure</h3>
+                <button class="btn-add-section" @click="addSection()">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                    Section
+                </button>
+            </div>
+
+            <div class="sections-list" x-ref="sectionsList">
+                <template x-for="(section, si) in config.sections" :key="section.id">
+                    <div class="builder-section" :class="{ 'collapsed': section.collapsed, 'hidden-item': !section.visible }">
+                        <!-- Section Header -->
+                        <div class="section-header">
+                            <div class="section-header-left">
+                                <button class="btn-icon btn-collapse" @click="section.collapsed = !section.collapsed">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" :style="section.collapsed ? 'transform:rotate(-90deg)' : ''"><path fill="currentColor" d="M7,10L12,15L17,10H7Z"/></svg>
+                                </button>
+                                <span class="section-label" x-text="section.label" @dblclick="editSectionLabel(section)"></span>
+                            </div>
+                            <div class="section-controls">
+                                <button class="btn-icon" @click="openSectionSettings(section)" title="Settings">
+                                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.04 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.04 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg>
+                                </button>
+                                <button class="btn-icon" @click="duplicateSection(si)" title="Duplicate">
+                                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
+                                </button>
+                                <button class="btn-icon" @click="section.visible = !section.visible; pushHistory()" :class="{ 'toggled-off': !section.visible }" title="Toggle Visibility">
+                                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" x-show="section.visible" d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/><path fill="currentColor" x-show="!section.visible" d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,7A5,5 0 0,1 17,12C17,12.64 16.87,13.26 16.64,13.82L19.57,16.75C21.07,15.5 22.27,13.86 23,12C21.27,7.61 17,4.5 12,4.5C10.6,4.5 9.26,4.75 8,5.2L10.17,7.35C10.74,7.13 11.35,7 12,7Z"/></svg>
+                                </button>
+                                <button class="btn-icon btn-delete" @click="deleteSection(si)" title="Delete Section">
+                                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Section Body (rows) -->
+                        <div class="section-body" x-show="!section.collapsed" x-transition>
+                            <template x-for="(row, ri) in section.rows" :key="row.id">
+                                <div class="builder-row" :class="{ 'hidden-item': !row.visible }">
+                                    <!-- Row Header -->
+                                    <div class="row-header">
+                                        <div class="row-header-left">
+                                            <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3,3H21V5H3V3M3,7H15V9H3V7M3,11H21V13H3V11M3,15H15V17H3V15M3,19H21V21H3V19Z"/></svg>
+                                            <span>Row</span>
+                                            <span class="row-col-info" x-text="row.columns.length + ' col' + (row.columns.length !== 1 ? 's' : '')"></span>
+                                        </div>
+                                        <div class="row-controls">
+                                            <button class="btn-icon btn-tiny" @click="openRowSettings(section, row)" title="Settings">
+                                                <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.04 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.04 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg>
+                                            </button>
+                                            <button class="btn-icon btn-tiny" @click="openColumnLayoutPicker(section, row)" title="Column Layout">
+                                                <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M10,4V8H21V4H10M3,4V8H8V4H3M3,10V14H8V10H3M10,10V14H21V10H10M3,16V20H8V16H3M10,16V20H21V16H10Z"/></svg>
+                                            </button>
+                                            <button class="btn-icon btn-tiny" @click="duplicateRow(si, ri)" title="Duplicate">
+                                                <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
+                                            </button>
+                                            <button class="btn-icon btn-tiny" @click="row.visible = !row.visible; pushHistory()" :class="{ 'toggled-off': !row.visible }" title="Toggle">
+                                                <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5Z"/></svg>
+                                            </button>
+                                            <button class="btn-icon btn-tiny btn-delete" @click="deleteRow(si, ri)" title="Delete Row">
+                                                <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Columns -->
+                                    <div class="builder-columns">
+                                        <template x-for="(col, ci) in row.columns" :key="col.id">
+                                            <div class="builder-column" :style="'flex:' + getColumnFlex(col.width)">
+                                                <div class="column-header">
+                                                    <span class="column-width" x-text="col.width"></span>
+                                                </div>
+
+                                                <!-- Elements in column -->
+                                                <div class="elements-list" :data-section="section.id" :data-row="row.id" :data-col="col.id">
+                                                    <template x-for="(el, ei) in col.elements" :key="el.id">
+                                                        <div class="builder-element" :class="{ 'hidden-item': !el.visible, 'selected': editingItem && editingItem.id === el.id }"
+                                                             :data-element-id="el.id">
+                                                            <div class="element-header" @click="openElementSettings(section, row, col, el)">
+                                                                <div class="element-icon" x-html="getElementIcon(el.type)"></div>
+                                                                <div class="element-info">
+                                                                    <span class="element-type" x-text="el.label || getElementLabel(el.type)"></span>
+                                                                </div>
+                                                                <div class="element-controls">
+                                                                    <button class="btn-icon btn-tiny" @click.stop="moveElement(si, ri, ci, ei, -1)" :disabled="ei === 0" title="Move Up">
+                                                                        <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M7,15L12,10L17,15H7Z"/></svg>
+                                                                    </button>
+                                                                    <button class="btn-icon btn-tiny" @click.stop="moveElement(si, ri, ci, ei, 1)" :disabled="ei === col.elements.length - 1" title="Move Down">
+                                                                        <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M7,10L12,15L17,10H7Z"/></svg>
+                                                                    </button>
+                                                                    <button class="btn-icon btn-tiny" @click.stop="duplicateElement(si, ri, ci, ei)" title="Duplicate">
+                                                                        <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
+                                                                    </button>
+                                                                    <button class="btn-icon btn-tiny" @click.stop="el.visible = !el.visible; pushHistory()" :class="{ 'toggled-off': !el.visible }" title="Toggle">
+                                                                        <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9M12,4.5C17,4.5 21.27,7.61 23,12C21.27,16.39 17,19.5 12,19.5C7,19.5 2.73,16.39 1,12C2.73,7.61 7,4.5 12,4.5Z"/></svg>
+                                                                    </button>
+                                                                    <button class="btn-icon btn-tiny btn-delete" @click.stop="deleteElement(si, ri, ci, ei)" title="Delete">
+                                                                        <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                </div>
+
+                                                <!-- Add Element Button -->
+                                                <button class="btn-add-element" @click="openAddElement(si, ri, ci)">
+                                                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <!-- Add Row Button -->
+                                </div>
+                            </template>
+                            <button class="btn-add-row" @click="addRow(si)">
+                                <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                                Add Row
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Empty State -->
+                <div class="empty-state" x-show="config.sections.length === 0">
+                    <svg viewBox="0 0 24 24" width="48" height="48"><path fill="currentColor" d="M19,5V7H15V5H19M9,5V11H5V5H9M19,13V19H15V13H19M9,17V19H5V17H9M21,3H13V9H21V3M11,3H3V13H11V3M21,11H13V21H21V11M11,15H3V21H11V15Z"/></svg>
+                    <p>Start building your page</p>
+                    <button class="btn-add-section" @click="addSection()">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                        Add First Section
+                    </button>
+                </div>
+
+                <!-- Bottom Add Section -->
+                <button class="btn-add-section bottom" @click="addSection()" x-show="config.sections.length > 0">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                    Add Section
+                </button>
+            </div>
+        </div>
+
+        <!-- RIGHT: Live Preview -->
+        <div class="builder-preview-pane">
+            <div class="preview-frame" :class="'viewport-' + previewViewport" :style="'--preview-accent:' + config.branding.accentColor">
+                <template x-for="section in config.sections" :key="section.id">
+                    <div class="preview-section" x-show="section.visible"
+                         :style="getSectionStyles(section)"
+                         @click="highlightSection(section)">
+                        <template x-for="row in section.rows" :key="row.id">
+                            <div class="preview-row" x-show="row.visible" :style="getRowStyles(row)">
+                                <template x-for="col in row.columns" :key="col.id">
+                                    <div class="preview-column" :style="'flex:' + getColumnFlex(col.width)">
+                                        <template x-for="el in col.elements" :key="el.id">
+                                            <div class="preview-element" x-show="el.visible" x-html="renderElement(el)"></div>
+                                        </template>
+                                        <div class="preview-empty-col" x-show="col.elements.length === 0 || col.elements.filter(e => e.visible).length === 0">
+                                            <span>Empty</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                <div class="preview-empty" x-show="config.sections.length === 0 || config.sections.filter(s => s.visible).length === 0">
+                    <p>No visible sections</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Panel (slides from right) -->
+        <div class="settings-panel" :class="{ open: editingItem !== null || showBrandingPanel }" x-show="editingItem !== null || showBrandingPanel" x-transition>
+            <div class="settings-panel-header">
+                <h3 x-text="showBrandingPanel ? 'Branding' : (editingItem ? getSettingsPanelTitle() : '')"></h3>
+                <button class="btn-icon" @click="editingItem = null; showBrandingPanel = false">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+                </button>
+            </div>
+            <div class="settings-panel-body">
+
+                <!-- Branding Settings -->
+                <template x-if="showBrandingPanel">
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label>Accent Color</label>
+                            <div class="color-input-row">
+                                <input type="color" x-model="config.branding.accentColor" class="color-picker-sm">
+                                <input type="text" class="form-input color-hex" x-model="config.branding.accentColor" maxlength="7">
+                            </div>
+                            <div class="color-presets">
+                                <template x-for="c in colorPresets" :key="c.hex">
+                                    <button class="color-swatch" :style="'background:'+c.hex" :class="{active: config.branding.accentColor===c.hex}" @click="config.branding.accentColor=c.hex" :title="c.name"></button>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Font Family</label>
+                            <select class="form-input" x-model="config.branding.fontFamily">
+                                <option value="system">System Default</option>
+                                <option value="inter">Inter</option>
+                                <option value="roboto">Roboto</option>
+                                <option value="open-sans">Open Sans</option>
+                                <option value="lato">Lato</option>
+                                <option value="nunito">Nunito</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Border Radius</label>
+                            <select class="form-input" x-model="config.branding.borderRadius">
+                                <option value="default">Default (6px)</option>
+                                <option value="rounded">Rounded (16px)</option>
+                                <option value="sharp">Sharp (2px)</option>
+                            </select>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Section Settings -->
+                <template x-if="editingItem && editingItem._settingsType === 'section'">
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label>Section Label</label>
+                            <input type="text" class="form-input" x-model="editingItem.label" @input="pushHistory()">
+                        </div>
+                        <div class="form-group">
+                            <label>Background Color</label>
+                            <div class="color-input-row">
+                                <input type="color" :value="editingItem.settings.bgColor || '#ffffff'" @input="editingItem.settings.bgColor = $event.target.value; pushHistory()" class="color-picker-sm">
+                                <input type="text" class="form-input color-hex" :value="editingItem.settings.bgColor || ''" @input="editingItem.settings.bgColor = $event.target.value" placeholder="transparent">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Padding (vertical)</label>
+                            <input type="text" class="form-input" :value="editingItem.settings.paddingY || '20px'" @input="editingItem.settings.paddingY = $event.target.value; pushHistory()" placeholder="20px">
+                        </div>
+                        <div class="form-group">
+                            <label>Full Width</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" :checked="editingItem.settings.fullWidth" @change="editingItem.settings.fullWidth = $event.target.checked; pushHistory()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Row Settings -->
+                <template x-if="editingItem && editingItem._settingsType === 'row'">
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label>Gap</label>
+                            <input type="text" class="form-input" :value="editingItem.settings.gap || '16px'" @input="editingItem.settings.gap = $event.target.value; pushHistory()" placeholder="16px">
+                        </div>
+                        <div class="form-group">
+                            <label>Alignment</label>
+                            <select class="form-input" :value="editingItem.settings.alignment || 'stretch'" @change="editingItem.settings.alignment = $event.target.value; pushHistory()">
+                                <option value="stretch">Stretch</option>
+                                <option value="flex-start">Top</option>
+                                <option value="center">Center</option>
+                                <option value="flex-end">Bottom</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Background Color</label>
+                            <div class="color-input-row">
+                                <input type="color" :value="editingItem.settings.bgColor || '#ffffff'" @input="editingItem.settings.bgColor = $event.target.value; pushHistory()" class="color-picker-sm">
+                                <input type="text" class="form-input color-hex" :value="editingItem.settings.bgColor || ''" @input="editingItem.settings.bgColor = $event.target.value" placeholder="transparent">
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Element Settings (dynamic per type) -->
+                <template x-if="editingItem && editingItem._settingsType === 'element'">
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label>Label</label>
+                            <input type="text" class="form-input" x-model="editingItem.label" @input="pushHistory()">
+                        </div>
+
+                        <!-- Text element -->
+                        <template x-if="editingItem.type === 'text'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Content</label>
+                                    <textarea class="form-input form-textarea" x-model="editingItem.settings.content" @input="pushHistory()" rows="6" placeholder="Enter text or HTML..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Font Size</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.fontSize" @input="pushHistory()" placeholder="16px">
+                                </div>
+                                <div class="form-group">
+                                    <label>Text Color</label>
+                                    <div class="color-input-row">
+                                        <input type="color" x-model="editingItem.settings.color" class="color-picker-sm">
+                                        <input type="text" class="form-input color-hex" x-model="editingItem.settings.color" placeholder="inherit">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Text Align</label>
+                                    <select class="form-input" x-model="editingItem.settings.textAlign">
+                                        <option value="left">Left</option>
+                                        <option value="center">Center</option>
+                                        <option value="right">Right</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Padding</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.padding" @input="pushHistory()" placeholder="16px">
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Image element -->
+                        <template x-if="editingItem.type === 'image'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Image URL</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.imageUrl" @input="pushHistory()" placeholder="https://example.com/image.jpg">
+                                </div>
+                                <div class="form-group">
+                                    <label>Alt Text</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.altText" @input="pushHistory()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Link URL</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.linkUrl" @input="pushHistory()" placeholder="Optional">
+                                </div>
+                                <div class="form-group">
+                                    <label>Width</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.width" @input="pushHistory()" placeholder="100%">
+                                </div>
+                                <div class="form-group">
+                                    <label>Border Radius</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.borderRadius" @input="pushHistory()" placeholder="8px">
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Menu element -->
+                        <template x-if="editingItem.type === 'menu'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Product View Mode</label>
+                                    <select class="form-input" x-model="editingItem.settings.productViewMode" @change="pushHistory()">
+                                        <option value="list">List View</option>
+                                        <option value="grid">Grid View</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Category Navigation</label>
+                                    <select class="form-input" x-model="editingItem.settings.navPosition" @change="pushHistory()">
+                                        <option value="sidebar">Sidebar</option>
+                                        <option value="top">Top Bar</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Card Style</label>
+                                    <select class="form-input" x-model="editingItem.settings.cardStyle" @change="pushHistory()">
+                                        <option value="default">Default</option>
+                                        <option value="horizontal">Horizontal</option>
+                                        <option value="vertical-hero">Hero Grid</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Announcement element -->
+                        <template x-if="editingItem.type === 'announcement'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Announcement Text</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.text" @input="pushHistory()" placeholder="Your announcement...">
+                                </div>
+                                <div class="form-group">
+                                    <label>Background Color</label>
+                                    <div class="color-input-row">
+                                        <input type="color" x-model="editingItem.settings.bgColor" class="color-picker-sm">
+                                        <input type="text" class="form-input color-hex" x-model="editingItem.settings.bgColor">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Text Color</label>
+                                    <div class="color-input-row">
+                                        <input type="color" x-model="editingItem.settings.textColor" class="color-picker-sm">
+                                        <input type="text" class="form-input color-hex" x-model="editingItem.settings.textColor">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Hours element -->
+                        <template x-if="editingItem.type === 'hours'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Show Icon</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" x-model="editingItem.settings.showIcon" @change="pushHistory()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <p class="form-hint">Hours are loaded from Restaurant Settings automatically.</p>
+                            </div>
+                        </template>
+
+                        <!-- Address element -->
+                        <template x-if="editingItem.type === 'address'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Show Map</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" x-model="editingItem.settings.showMap" @change="pushHistory()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>Show Copy Button</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" x-model="editingItem.settings.showCopyButton" @change="pushHistory()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <p class="form-hint">Address is loaded from Restaurant Settings automatically.</p>
+                            </div>
+                        </template>
+
+                        <!-- Phone element -->
+                        <template x-if="editingItem.type === 'phone'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Show Copy Button</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" x-model="editingItem.settings.showCopyButton" @change="pushHistory()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <p class="form-hint">Phone is loaded from Restaurant Settings automatically.</p>
+                            </div>
+                        </template>
+
+                        <!-- Social element -->
+                        <template x-if="editingItem.type === 'social'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Layout</label>
+                                    <select class="form-input" x-model="editingItem.settings.layout" @change="pushHistory()">
+                                        <option value="horizontal">Horizontal</option>
+                                        <option value="vertical">Vertical</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Social Links</label>
+                                    <template x-for="(link, li) in (editingItem.settings.links || [])" :key="li">
+                                        <div class="social-link-row">
+                                            <select class="form-input" x-model="link.platform" style="width:100px">
+                                                <option value="instagram">Instagram</option>
+                                                <option value="facebook">Facebook</option>
+                                                <option value="telegram">Telegram</option>
+                                                <option value="tiktok">TikTok</option>
+                                                <option value="youtube">YouTube</option>
+                                                <option value="twitter">Twitter/X</option>
+                                            </select>
+                                            <input type="text" class="form-input" x-model="link.url" placeholder="https://..." style="flex:1">
+                                            <button class="btn-icon btn-tiny btn-delete" @click="editingItem.settings.links.splice(li, 1); pushHistory()">
+                                                <svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <button class="btn-add-link" @click="if(!editingItem.settings.links) editingItem.settings.links = []; editingItem.settings.links.push({platform:'instagram',url:''}); pushHistory()">+ Add Link</button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Spacer element -->
+                        <template x-if="editingItem.type === 'spacer'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Height</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.height" @input="pushHistory()" placeholder="40px">
+                                </div>
+                                <div class="form-group">
+                                    <label>Show Divider</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" x-model="editingItem.settings.showDivider" @change="pushHistory()">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="form-group" x-show="editingItem.settings.showDivider">
+                                    <label>Divider Color</label>
+                                    <div class="color-input-row">
+                                        <input type="color" x-model="editingItem.settings.dividerColor" class="color-picker-sm">
+                                        <input type="text" class="form-input color-hex" x-model="editingItem.settings.dividerColor">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Map element -->
+                        <template x-if="editingItem.type === 'map'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Google Maps Embed URL</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.googleMapsEmbedUrl" @input="pushHistory()" placeholder="https://www.google.com/maps/embed?pb=...">
+                                    <p class="form-hint">Go to Google Maps > Share > Embed a map > Copy the src URL.</p>
+                                </div>
+                                <div class="form-group">
+                                    <label>Height</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.height" @input="pushHistory()" placeholder="300px">
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Custom HTML element -->
+                        <template x-if="editingItem.type === 'custom_html'">
+                            <div>
+                                <div class="form-group">
+                                    <label>HTML Content</label>
+                                    <textarea class="form-input form-textarea" x-model="editingItem.settings.htmlContent" @input="pushHistory()" rows="10" placeholder="<div>Your HTML here</div>"></textarea>
+                                </div>
+                                <p class="form-hint">Use with caution. HTML is rendered as-is on the public page.</p>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Element Modal -->
+    <div class="modal-overlay" x-show="showAddElement" @click.self="showAddElement = false" x-transition.opacity>
+        <div class="add-element-modal" x-show="showAddElement" x-transition>
+            <div class="modal-header">
+                <h3>Add Element</h3>
+                <button class="btn-icon" @click="showAddElement = false">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="element-category">
+                    <h4>Basic</h4>
+                    <div class="element-grid">
+                        <button class="element-type-card" @click="addElement('text')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M5,4V7H10.5V19H13.5V7H19V4H5Z"/></svg></div>
+                            <span>Text</span>
+                        </button>
+                        <button class="element-type-card" @click="addElement('image')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19,19H5V5H19M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M13.96,12.29L11.21,15.83L9.25,13.47L6.5,17H17.5L13.96,12.29Z"/></svg></div>
+                            <span>Image</span>
+                        </button>
+                        <button class="element-type-card" @click="addElement('spacer')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M18,18H6V6H18V18M18,4H6A2,2 0 0,0 4,6V18A2,2 0 0,0 6,20H18A2,2 0 0,0 20,18V6A2,2 0 0,0 18,4M11,10H13V14H11V10Z"/></svg></div>
+                            <span>Spacer</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="element-category">
+                    <h4>Content</h4>
+                    <div class="element-grid">
+                        <button class="element-type-card" @click="addElement('menu')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M3,5H9V11H3V5M5,7V9H7V7H5M11,7H21V9H11V7M11,15H21V17H11V15M5,20L1.5,16.5L2.91,15.09L5,17.17L9.59,12.59L11,14L5,20Z"/></svg></div>
+                            <span>Product Menu</span>
+                        </button>
+                        <button class="element-type-card" @click="addElement('announcement')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H6L4,18V4H20"/></svg></div>
+                            <span>Announcement</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="element-category">
+                    <h4>Info</h4>
+                    <div class="element-grid">
+                        <button class="element-type-card" @click="addElement('hours')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z"/></svg></div>
+                            <span>Hours</span>
+                        </button>
+                        <button class="element-type-card" @click="addElement('address')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5M12,2A7,7 0 0,0 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9A7,7 0 0,0 12,2Z"/></svg></div>
+                            <span>Address</span>
+                        </button>
+                        <button class="element-type-card" @click="addElement('phone')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z"/></svg></div>
+                            <span>Phone</span>
+                        </button>
+                        <button class="element-type-card" @click="addElement('social')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.85L8.91,12.7C8.96,12.47 9,12.24 9,12C9,11.76 8.96,11.53 8.91,11.3L15.96,7.19C16.5,7.69 17.21,8 18,8A3,3 0 0,0 21,5A3,3 0 0,0 18,2A3,3 0 0,0 15,5C15,5.24 15.04,5.47 15.09,5.7L8.04,9.81C7.5,9.31 6.79,9 6,9A3,3 0 0,0 3,12A3,3 0 0,0 6,15C6.79,15 7.5,14.69 8.04,14.19L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.91 18,21.91C19.61,21.91 20.92,20.61 20.92,19C20.92,17.39 19.61,16.08 18,16.08Z"/></svg></div>
+                            <span>Social Links</span>
+                        </button>
+                        <button class="element-type-card" @click="addElement('map')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15,19L9,16.89V5L15,7.11M20.5,3C20.44,3 20.39,3 20.34,3L15,5.1L9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0,0 3.5,21C3.55,21 3.61,21 3.66,20.97L9,18.9L15,21L20.64,19.1C20.85,19 21,18.85 21,18.62V3.5A0.5,0.5 0 0,0 20.5,3Z"/></svg></div>
+                            <span>Map</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="element-category">
+                    <h4>Advanced</h4>
+                    <div class="element-grid">
+                        <button class="element-type-card" @click="addElement('custom_html')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M14.6,16.6L19.2,12L14.6,7.4L16,6L22,12L16,18L14.6,16.6M9.4,16.6L4.8,12L9.4,7.4L8,6L2,12L8,18L9.4,16.6Z"/></svg></div>
+                            <span>Custom HTML</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Column Layout Picker Modal -->
+    <div class="modal-overlay" x-show="showColumnPicker" @click.self="showColumnPicker = false" x-transition.opacity>
+        <div class="column-picker-modal" x-show="showColumnPicker" x-transition>
+            <div class="modal-header">
+                <h3>Column Layout</h3>
+                <button class="btn-icon" @click="showColumnPicker = false">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="column-layouts">
+                    <button class="col-layout-option" @click="setColumnLayout(['1/1'])">
+                        <div class="col-preview"><div style="flex:1"></div></div>
+                        <span>1 Column</span>
+                    </button>
+                    <button class="col-layout-option" @click="setColumnLayout(['1/2','1/2'])">
+                        <div class="col-preview"><div style="flex:1"></div><div style="flex:1"></div></div>
+                        <span>1/2 + 1/2</span>
+                    </button>
+                    <button class="col-layout-option" @click="setColumnLayout(['1/3','1/3','1/3'])">
+                        <div class="col-preview"><div style="flex:1"></div><div style="flex:1"></div><div style="flex:1"></div></div>
+                        <span>1/3 + 1/3 + 1/3</span>
+                    </button>
+                    <button class="col-layout-option" @click="setColumnLayout(['2/3','1/3'])">
+                        <div class="col-preview"><div style="flex:2"></div><div style="flex:1"></div></div>
+                        <span>2/3 + 1/3</span>
+                    </button>
+                    <button class="col-layout-option" @click="setColumnLayout(['1/3','2/3'])">
+                        <div class="col-preview"><div style="flex:1"></div><div style="flex:2"></div></div>
+                        <span>1/3 + 2/3</span>
+                    </button>
+                    <button class="col-layout-option" @click="setColumnLayout(['1/4','3/4'])">
+                        <div class="col-preview"><div style="flex:1"></div><div style="flex:3"></div></div>
+                        <span>1/4 + 3/4</span>
+                    </button>
+                    <button class="col-layout-option" @click="setColumnLayout(['3/4','1/4'])">
+                        <div class="col-preview"><div style="flex:3"></div><div style="flex:1"></div></div>
+                        <span>3/4 + 1/4</span>
+                    </button>
+                    <button class="col-layout-option" @click="setColumnLayout(['1/4','1/4','1/4','1/4'])">
+                        <div class="col-preview"><div style="flex:1"></div><div style="flex:1"></div><div style="flex:1"></div><div style="flex:1"></div></div>
+                        <span>1/4 x 4</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" :class="{ 'toast-error': toastError }" x-show="showToast" x-transition.opacity>
+        <svg x-show="!toastError" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z"/></svg>
+        <svg x-show="toastError" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
+        <span x-text="toastMessage"></span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="/static/js/store_design.js"></script>
+{% endblock %}

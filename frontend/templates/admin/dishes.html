@@ -1,0 +1,612 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dishes Dashboard - Admin{% endblock %}
+
+{% block page_title %}Dishes Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/dishes.css">
+{% endblock %}
+
+{% block content %}
+<div class="admin-content dishes-page" x-data="dishesApp()" x-init="init()">
+    <!-- Green Header Bar -->
+    <div class="dishes-header">
+        <!-- Left: Tabs -->
+        <div class="header-tabs">
+            <button class="tab-button"
+                    :class="{ active: viewTab === 'dishes' }"
+                    @click="viewTab = 'dishes'; filterItems()">
+                Dishes
+            </button>
+            <button class="tab-button"
+                    :class="{ active: viewTab === 'addons' }"
+                    @click="viewTab = 'addons'; filterItems()">
+                Add-on Sets
+            </button>
+        </div>
+
+        <!-- Center: Search -->
+        <div class="header-search">
+            <svg class="search-icon" viewBox="0 0 24 24">
+                <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+            </svg>
+            <input type="text"
+                   x-model="searchQuery"
+                   @input.debounce.300ms="filterItems()"
+                   placeholder="Search dishes...">
+        </div>
+
+        <!-- Right: Actions -->
+        <div class="header-actions">
+            <button class="icon-button"
+                    title="Notifications"
+                    @click="window.location.href='/admin/orders'">
+                <svg viewBox="0 0 24 24">
+                    <path d="M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M14,21A2,2 0 0,1 12,23A2,2 0 0,1 10,21"/>
+                </svg>
+                <span class="notification-badge" x-show="notificationCount > 0" x-text="notificationCount"></span>
+            </button>
+
+            <button class="action-button" @click="window.location.href='/admin/categories'">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                </svg>
+                <span>Category</span>
+            </button>
+
+            <button class="action-button primary" @click="window.location.href='/admin/assortment'">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                </svg>
+                <span>Dish</span>
+            </button>
+
+            <div style="position: relative;">
+                <button class="icon-button" @click="showOverflowMenu = !showOverflowMenu">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z"/>
+                    </svg>
+                </button>
+                <div class="overflow-menu" :class="{ show: showOverflowMenu }" @click.away="showOverflowMenu = false">
+                    <div class="overflow-menu-item" @click="exportData()">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                        </svg>
+                        <span>Export Data</span>
+                    </div>
+                    <div class="overflow-menu-item" @click="refreshData()">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+                        </svg>
+                        <span>Refresh</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Container -->
+    <div class="dishes-content">
+        <!-- Category Filter Pills -->
+        <div class="category-filters" x-show="viewTab === 'dishes'">
+            <button class="category-pill"
+                    :class="{ active: selectedCategory === null }"
+                    @click="selectedCategory = null; filterItems()">
+                All
+            </button>
+            <template x-for="cat in categories" :key="cat._id">
+                <button class="category-pill"
+                        :class="{ active: selectedCategory === cat._id }"
+                        @click="selectedCategory = cat._id; filterItems()">
+                    <span x-text="cat.name"></span>
+                </button>
+            </template>
+        </div>
+
+        <!-- Data Table -->
+        <div class="dishes-table-container">
+            <table class="dishes-table" x-show="filteredItems.length > 0">
+                <thead>
+                    <tr>
+                        <th style="width: 70px;">Status</th>
+                        <th style="width: 35%;">
+                            <span x-text="viewTab === 'dishes' ? 'Dish Name' : 'Modifier Name'"></span>
+                        </th>
+                        <th style="width: 110px;">POS ID</th>
+                        <th style="width: 90px; text-align: right;">Price</th>
+                        <th style="width: 130px; text-align: center;">Availability</th>
+                        <th style="width: 70px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="item in paginatedItems" :key="item._id">
+                        <tr>
+                            <!-- Status Toggle -->
+                            <td>
+                                <div class="status-toggle"
+                                     :class="{ on: item.is_active || item.enabled, disabled: item.loading }"
+                                     @click="toggleStatus(item)">
+                                </div>
+                            </td>
+
+                            <!-- Dish/Modifier Name with Image (for dishes only) -->
+                            <td>
+                                <div class="dish-info">
+                                    <img v-if="viewTab === 'dishes'"
+                                         :src="item.image || '/static/img/placeholder.svg'"
+                                         :alt="item.name"
+                                         class="dish-thumb"
+                                         onerror="this.src='/static/img/placeholder.svg'">
+                                    <div class="dish-details">
+                                        <div class="dish-name" x-text="item.name"></div>
+                                        <div class="dish-category"
+                                             x-show="viewTab === 'dishes'"
+                                             x-text="getCategoryName(item.category_id)"></div>
+                                        <div class="dish-category"
+                                             x-show="viewTab === 'addons'"
+                                             x-text="item.type || 'Modifier Group'"></div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- POS ID -->
+                            <td>
+                                <code class="pos-id"
+                                      x-text="item._id ? item._id.substring(0, 8) : ''"></code>
+                            </td>
+
+                            <!-- Price -->
+                            <td style="text-align: right;">
+                                <span class="price" x-text="formatPrice(item)"></span>
+                            </td>
+
+                            <!-- Availability Dropdown -->
+                            <td style="text-align: center;">
+                                <select class="availability-dropdown"
+                                        :class="{ available: item.available, 'out-of-stock': !item.available }"
+                                        :value="item.available ? 'available' : 'out-of-stock'"
+                                        @change="updateAvailability(item, $event.target.value)">
+                                    <option value="available">✓ Available</option>
+                                    <option value="out-of-stock">✗ Out of Stock</option>
+                                </select>
+                            </td>
+
+                            <!-- Actions -->
+                            <td style="text-align: center;">
+                                <button class="action-icon delete"
+                                        @click="deleteItem(item)"
+                                        title="Delete">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+
+            <!-- Empty State -->
+            <div class="empty-state" x-show="filteredItems.length === 0">
+                <svg class="empty-icon" viewBox="0 0 24 24">
+                    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6Z"/>
+                </svg>
+                <h3>No items found</h3>
+                <p x-show="searchQuery">Try a different search term</p>
+                <p x-show="!searchQuery && selectedCategory && viewTab === 'dishes'">No dishes in this category</p>
+                <p x-show="!searchQuery && !selectedCategory && viewTab === 'dishes'">No dishes available</p>
+                <p x-show="viewTab === 'addons'">No modifiers available</p>
+                <button class="btn btn-primary"
+                        @click="window.location.href = viewTab === 'dishes' ? '/admin/assortment' : '/admin/modifiers'">
+                    <span x-text="viewTab === 'dishes' ? 'Add First Dish' : 'Add First Modifier'"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Pagination Footer -->
+        <div class="pagination-footer" x-show="filteredItems.length > 0">
+            <div class="items-per-page">
+                <span>Items per page:</span>
+                <select x-model="itemsPerPage" @change="currentPage = 1; filterItems()">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+
+            <div class="pagination-info">
+                <span x-text="`${startItem}-${endItem} of ${totalItems}`"></span>
+            </div>
+
+            <div class="pagination-controls">
+                <button @click="previousPage()"
+                        :disabled="currentPage === 1"
+                        class="page-button">
+                    Previous
+                </button>
+                <template x-for="page in visiblePages" :key="page">
+                    <button class="page-number"
+                            :class="{ active: currentPage === page, ellipsis: page === '...' }"
+                            @click="page !== '...' ? (currentPage = page, filterItems()) : null"
+                            x-text="page"></button>
+                </template>
+                <button @click="nextPage()"
+                        :disabled="currentPage === totalPages"
+                        class="page-button">
+                    Next
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const categoriesData = {{ categories | tojson }};
+
+function dishesApp() {
+    return {
+        viewTab: 'dishes',
+        menuItems: [],
+        modifiers: [],
+        categories: categoriesData || [],
+        searchQuery: '',
+        selectedCategory: null,
+        currentPage: 1,
+        itemsPerPage: 25,
+        filteredItems: [],
+        notificationCount: 0,
+        showOverflowMenu: false,
+        ws: null,
+
+        async init() {
+            await this.loadData();
+            this.connectWebSocket();
+            this.filterItems();
+        },
+
+        async loadData() {
+            try {
+                // Load menu items (for Dishes tab)
+                const menuResponse = await fetch('/api/menu-items?active_only=false');
+                if (menuResponse.ok) {
+                    this.menuItems = await menuResponse.json();
+                }
+
+                // Load modifiers (for Add-on Sets tab)
+                const modifiersResponse = await fetch('/api/modifiers');
+                if (modifiersResponse.ok) {
+                    this.modifiers = await modifiersResponse.json();
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                this.showToast('Failed to load data', 'error');
+            }
+        },
+
+        connectWebSocket() {
+            try {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws/orders`;
+
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'new_order') {
+                        this.notificationCount++;
+                    }
+                };
+
+                this.ws.onerror = () => {
+                    console.log('WebSocket not available, using polling fallback');
+                    this.startPolling();
+                };
+
+                this.ws.onclose = () => {
+                    console.log('WebSocket closed, using polling fallback');
+                    this.startPolling();
+                };
+            } catch (error) {
+                console.log('WebSocket connection failed, using polling');
+                this.startPolling();
+            }
+        },
+
+        startPolling() {
+            setInterval(async () => {
+                try {
+                    const response = await fetch('/api/orders?status=new');
+                    if (response.ok) {
+                        const orders = await response.json();
+                        this.notificationCount = orders.length;
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 30000); // Poll every 30 seconds
+        },
+
+        filterItems() {
+            let items = [];
+
+            // Select items based on tab
+            if (this.viewTab === 'dishes') {
+                items = [...this.menuItems];
+            } else {
+                items = [...this.modifiers].map(m => ({
+                    ...m,
+                    is_active: m.enabled !== false,
+                    available: true
+                }));
+            }
+
+            // Filter by category (dishes only)
+            if (this.viewTab === 'dishes' && this.selectedCategory) {
+                items = items.filter(item => item.category_id === this.selectedCategory);
+            }
+
+            // Filter by search
+            if (this.searchQuery) {
+                const query = this.searchQuery.toLowerCase();
+                items = items.filter(item => {
+                    const nameMatch = item.name?.toLowerCase().includes(query);
+                    const idMatch = item._id?.substring(0, 8).toLowerCase().includes(query);
+                    const categoryMatch = this.getCategoryName(item.category_id)?.toLowerCase().includes(query);
+                    return nameMatch || idMatch || categoryMatch;
+                });
+            }
+
+            this.filteredItems = items;
+        },
+
+        get paginatedItems() {
+            const start = (this.currentPage - 1) * this.itemsPerPage;
+            const end = start + parseInt(this.itemsPerPage);
+            return this.filteredItems.slice(start, end);
+        },
+
+        get totalPages() {
+            return Math.ceil(this.filteredItems.length / this.itemsPerPage);
+        },
+
+        get totalItems() {
+            return this.filteredItems.length;
+        },
+
+        get startItem() {
+            if (this.totalItems === 0) return 0;
+            return (this.currentPage - 1) * this.itemsPerPage + 1;
+        },
+
+        get endItem() {
+            const end = this.currentPage * this.itemsPerPage;
+            return Math.min(end, this.totalItems);
+        },
+
+        get visiblePages() {
+            const pages = [];
+            const total = this.totalPages;
+            const current = this.currentPage;
+
+            if (total <= 7) {
+                for (let i = 1; i <= total; i++) pages.push(i);
+            } else {
+                if (current <= 4) {
+                    for (let i = 1; i <= 5; i++) pages.push(i);
+                    pages.push('...');
+                    pages.push(total);
+                } else if (current >= total - 3) {
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = total - 4; i <= total; i++) pages.push(i);
+                } else {
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+                    pages.push('...');
+                    pages.push(total);
+                }
+            }
+            return pages;
+        },
+
+        getCategoryName(catId) {
+            const cat = this.categories.find(c => c._id === catId);
+            return cat ? cat.name : '';
+        },
+
+        formatPrice(item) {
+            if (this.viewTab === 'addons' && item.options) {
+                const prices = item.options.map(o => o.price_add || 0);
+                if (prices.length === 0) return 'N/A';
+                const min = Math.min(...prices);
+                const max = Math.max(...prices);
+                if (min === max) return `${min.toFixed(2)} грн`;
+                return `${min.toFixed(2)} - ${max.toFixed(2)} грн`;
+            }
+            return item.price ? `${item.price.toFixed(2)} грн` : 'N/A';
+        },
+
+        async toggleStatus(item) {
+            if (item.loading) return;
+
+            const newStatus = !(item.is_active || item.enabled);
+            const oldStatus = item.is_active || item.enabled;
+
+            // Optimistic update
+            if (this.viewTab === 'dishes') {
+                item.is_active = newStatus;
+            } else {
+                item.enabled = newStatus;
+            }
+            item.loading = true;
+
+            try {
+                let response;
+                if (this.viewTab === 'dishes') {
+                    response = await fetch(`/api/menu-items/${item._id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            item_type: item.item_type || 'product',
+                            product_id: item.product_id || item._id,
+                            is_active: newStatus,
+                            sort_order: item.sort_order || 0,
+                            category_id: item.category_id
+                        })
+                    });
+                } else {
+                    response = await fetch(`/api/modifiers/${item._id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ...item,
+                            enabled: newStatus
+                        })
+                    });
+                }
+
+                if (!response.ok) throw new Error('Update failed');
+
+                this.showToast('Status updated successfully', 'success');
+            } catch (error) {
+                // Rollback on error
+                if (this.viewTab === 'dishes') {
+                    item.is_active = oldStatus;
+                } else {
+                    item.enabled = oldStatus;
+                }
+                console.error('Error toggling status:', error);
+                this.showToast('Failed to update status', 'error');
+            } finally {
+                item.loading = false;
+            }
+        },
+
+        async updateAvailability(item, value) {
+            if (this.viewTab === 'addons') return; // Not applicable for modifiers
+
+            const available = value === 'available';
+            const productId = item.product_id || item._id;
+
+            try {
+                const response = await fetch(`/api/products/${productId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...item,
+                        available
+                    })
+                });
+
+                if (!response.ok) throw new Error('Update failed');
+
+                item.available = available;
+                this.showToast('Availability updated', 'success');
+            } catch (error) {
+                console.error('Error updating availability:', error);
+                this.showToast('Failed to update availability', 'error');
+            }
+        },
+
+        async deleteItem(item) {
+            const confirmText = this.viewTab === 'dishes'
+                ? `Delete dish "${item.name}"? This will remove it from the menu.`
+                : `Delete modifier "${item.name}"?`;
+
+            if (!confirm(confirmText)) return;
+
+            try {
+                const endpoint = this.viewTab === 'dishes'
+                    ? `/api/menu-items/${item._id}`
+                    : `/api/modifiers/${item._id}`;
+
+                const response = await fetch(endpoint, { method: 'DELETE' });
+
+                if (!response.ok) throw new Error('Delete failed');
+
+                await this.loadData();
+                this.filterItems();
+                this.showToast('Item deleted successfully', 'success');
+            } catch (error) {
+                console.error('Error deleting item:', error);
+                this.showToast('Failed to delete item', 'error');
+            }
+        },
+
+        previousPage() {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.filterItems();
+            }
+        },
+
+        nextPage() {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+                this.filterItems();
+            }
+        },
+
+        async refreshData() {
+            this.showOverflowMenu = false;
+            await this.loadData();
+            this.filterItems();
+            this.showToast('Data refreshed', 'success');
+        },
+
+        exportData() {
+            this.showOverflowMenu = false;
+            const data = this.filteredItems.map(item => ({
+                name: item.name,
+                pos_id: item._id?.substring(0, 8),
+                price: item.price,
+                available: item.available,
+                active: item.is_active || item.enabled,
+                category: this.getCategoryName(item.category_id)
+            }));
+
+            const csv = [
+                ['Name', 'POS ID', 'Price', 'Available', 'Active', 'Category'].join(','),
+                ...data.map(row => [
+                    row.name,
+                    row.pos_id,
+                    row.price,
+                    row.available,
+                    row.active,
+                    row.category
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dishes-export-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            this.showToast('Data exported successfully', 'success');
+        },
+
+        showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    };
+}
+</script>
+{% endblock %}

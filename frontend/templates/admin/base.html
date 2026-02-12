@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="uk" x-data="{ theme: localStorage.getItem('theme') || 'light' }"
+      x-init="$watch('theme', val => { localStorage.setItem('theme', val); document.documentElement.setAttribute('data-theme', val) })"
+      :data-theme="theme">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin - Clover Coffee{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+    <link rel="stylesheet" href="/static/css/sidebar.css">
+    {% block extra_css %}{% endblock %}
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar" x-data="{ settingsExpanded: false, languageOpen: false, currentLang: 'uk' }">
+            <!-- Project Header -->
+            <div class="sidebar-project">
+                <div class="project-name">
+                    <span class="project-icon">☘️</span>
+                    <span>Clover</span>
+                    <span class="project-badge">TEST</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <!-- Online Orders Section -->
+                <div class="sidebar-section">
+                    <a href="/admin/orders" class="nav-item {% if request.url.path == '/admin/orders' %}active{% endif %}" data-tooltip="Online Orders">
+                        <svg viewBox="0 0 24 24"><path d="M19,3H14.82C14.4,1.84 13.3,1 12,1C10.7,1 9.6,1.84 9.18,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M12,3A1,1 0 0,1 13,4A1,1 0 0,1 12,5A1,1 0 0,1 11,4A1,1 0 0,1 12,3"/></svg>
+                        <span>Online Orders</span>
+                    </a>
+                </div>
+
+                <!-- Analytics Section -->
+                <div class="sidebar-section">
+                    <a href="/admin/stats" class="nav-item {% if request.url.path == '/admin/stats' %}active{% endif %}" data-tooltip="Analytics">
+                        <svg viewBox="0 0 24 24"><path d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/></svg>
+                        <span>Analytics</span>
+                    </a>
+                </div>
+
+                <!-- Settings Section (Expandable) -->
+                <div class="sidebar-section">
+                    <a href="#"
+                       class="nav-item expandable"
+                       :class="{ expanded: settingsExpanded }"
+                       @click.prevent="settingsExpanded = !settingsExpanded">
+                        <svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg>
+                        <span>Settings</span>
+                        <svg class="expand-icon" viewBox="0 0 24 24"><path d="M7,10L12,15L17,10H7Z"/></svg>
+                    </a>
+                    <div class="nav-subitems" :class="{ show: settingsExpanded }">
+                        <a href="/admin/settings" class="nav-subitem {% if request.url.path == '/admin/settings' %}active{% endif %}">
+                            <span>Restaurant Info</span>
+                        </a>
+                        <a href="/admin/delivery-zones" class="nav-subitem {% if request.url.path == '/admin/delivery-zones' %}active{% endif %}">
+                            <span>Delivery Zones</span>
+                        </a>
+                        <a href="/admin/settings#order-types" class="nav-subitem">
+                            <span>Order Types</span>
+                        </a>
+                        <a href="/admin/store-design" class="nav-subitem {% if request.url.path == '/admin/store-design' %}active{% endif %}">
+                            <span>Store Design</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Menu Section -->
+                <div class="sidebar-section menu-section">
+                    <div class="section-title">Menu</div>
+                    <a href="/admin/dishes" class="nav-item {% if request.url.path == '/admin/dishes' %}active{% endif %}" data-tooltip="Dashboard">
+                        <svg viewBox="0 0 24 24"><path d="M3,5H9V11H3V5M5,7V9H7V7H5M11,7H21V9H11V7M11,15H21V17H11V15M5,20L1.5,16.5L2.91,15.09L5,17.17L9.59,12.59L11,14L5,20Z"/></svg>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/admin/assortment" class="nav-item {% if request.url.path == '/admin/assortment' %}active{% endif %}" data-tooltip="Assortment">
+                        <svg viewBox="0 0 24 24"><path d="M19,19H5V5H19M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M13.96,12.29L11.21,15.83L9.25,13.47L6.5,17H17.5L13.96,12.29Z"/></svg>
+                        <span>Assortment</span>
+                    </a>
+                    <a href="/admin/categories" class="nav-item {% if request.url.path == '/admin/categories' %}active{% endif %}" data-tooltip="Categories">
+                        <svg viewBox="0 0 24 24"><path d="M12,2L11.5,3.5L10,4L11.5,4.5L12,6L12.5,4.5L14,4L12.5,3.5L12,2M5.5,7A1.5,1.5 0 0,0 4,8.5A1.5,1.5 0 0,0 5.5,10A1.5,1.5 0 0,0 7,8.5A1.5,1.5 0 0,0 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.89,2 2,2.89 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.44 21.77,11.94 21.41,11.58Z"/></svg>
+                        <span>Categories</span>
+                    </a>
+                    <a href="/admin/modifiers" class="nav-item {% if request.url.path == '/admin/modifiers' %}active{% endif %}" data-tooltip="Modifiers">
+                        <svg viewBox="0 0 24 24"><path d="M3,17V19H9V17H3M3,5V7H13V5H3M13,21V19H21V17H13V15H11V21H13M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z"/></svg>
+                        <span>Modifiers</span>
+                    </a>
+                </div>
+
+                <!-- Tables & Zones -->
+                <div class="sidebar-section">
+                    <a href="/admin/production" class="nav-item tables-link {% if request.url.path == '/admin/production' %}active{% endif %}" data-tooltip="Tables & Zones">
+                        <svg viewBox="0 0 24 24"><path d="M3,4H21V6H20V20A1,1 0 0,1 19,21H5A1,1 0 0,1 4,20V6H3V4M6,6V19H18V6H6M8,8H16V10H8V8Z"/></svg>
+                        <span>Tables & Zones</span>
+                    </a>
+                </div>
+
+                <!-- Management Section -->
+                <div class="sidebar-section">
+                    <a href="/admin/audit-logs" class="nav-item {% if request.url.path == '/admin/audit-logs' %}active{% endif %}" data-tooltip="Історія змін">
+                        <svg viewBox="0 0 24 24"><path d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3"/></svg>
+                        <span>Історія змін</span>
+                    </a>
+                    <a href="/admin/feedbacks" class="nav-item {% if request.url.path == '/admin/feedbacks' %}active{% endif %}" data-tooltip="Відгуки">
+                        <svg viewBox="0 0 24 24"><path d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"/></svg>
+                        <span>Відгуки</span>
+                    </a>
+                    <a href="/admin/promo-codes" class="nav-item {% if request.url.path == '/admin/promo-codes' %}active{% endif %}" data-tooltip="Промокоди">
+                        <svg viewBox="0 0 24 24"><path d="M21.41,11.58L12.41,2.58A2,2 0 0,0 11,2H4A2,2 0 0,0 2,4V11C2,11.55 2.22,12.05 2.59,12.42L11.59,21.42A2,2 0 0,0 13,22A2,2 0 0,0 14.41,21.41L21.41,14.41A2,2 0 0,0 22,13A2,2 0 0,0 21.41,11.58M13,20L4,11V4H11L20,13M6.5,5A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 6.5,8A1.5,1.5 0 0,1 5,6.5A1.5,1.5 0 0,1 6.5,5Z"/></svg>
+                        <span>Промокоди</span>
+                    </a>
+                    <a href="/admin/qr-codes" class="nav-item {% if request.url.path == '/admin/qr-codes' %}active{% endif %}" data-tooltip="QR-коди">
+                        <svg viewBox="0 0 24 24"><path d="M3,11H5V13H3V11M11,5H13V9H11V5M9,11H13V15H11V13H9V11M15,11H17V13H19V11H21V13H19V15H21V19H19V21H17V19H13V21H11V17H15V15H17V13H15V11M19,19V15H17V19H19M15,3H21V9H15V3M17,5V7H19V5H17M3,3H9V9H3V3M5,5V7H7V5H5M3,15H9V21H3V15M5,17V19H7V17H5Z"/></svg>
+                        <span>QR-коди</span>
+                    </a>
+                </div>
+
+                <!-- Go to Website -->
+                <div class="sidebar-section">
+                    <a href="/menu" target="_blank" class="nav-item website-link" data-tooltip="Go to Website">
+                        <svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>
+                        <span>Go to Website</span>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- Language Selector -->
+            <div class="sidebar-language">
+                <div class="language-selector">
+                    <div class="language-dropdown" :class="{ show: languageOpen }">
+                        <div class="language-option"
+                             :class="{ active: currentLang === 'en' }"
+                             @click="currentLang = 'en'; languageOpen = false">
+                            <span class="language-flag">🇬🇧</span>
+                            <span class="language-name">English</span>
+                            <svg class="check-icon" viewBox="0 0 24 24"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+                        </div>
+                        <div class="language-option"
+                             :class="{ active: currentLang === 'uk' }"
+                             @click="currentLang = 'uk'; languageOpen = false">
+                            <span class="language-flag">🇺🇦</span>
+                            <span class="language-name">Українська</span>
+                            <svg class="check-icon" viewBox="0 0 24 24"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+                        </div>
+                        <div class="language-option"
+                             :class="{ active: currentLang === 'de' }"
+                             @click="currentLang = 'de'; languageOpen = false">
+                            <span class="language-flag">🇩🇪</span>
+                            <span class="language-name">Deutsch</span>
+                            <svg class="check-icon" viewBox="0 0 24 24"><path d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+                        </div>
+                    </div>
+                    <button class="language-button" @click="languageOpen = !languageOpen">
+                        <div class="language-current">
+                            <span class="language-flag" x-text="currentLang === 'en' ? '🇬🇧' : (currentLang === 'uk' ? '🇺🇦' : '🇩🇪')"></span>
+                            <span x-text="currentLang === 'en' ? 'EN' : (currentLang === 'uk' ? 'UK' : 'DE')"></span>
+                        </div>
+                        <svg class="chevron-icon" viewBox="0 0 24 24"><path d="M7,10L12,15L17,10H7Z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Top Bar -->
+            <header class="admin-topbar">
+                <div class="topbar-left">
+                    <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+                </div>
+                <div class="topbar-right">
+                    <button class="theme-toggle" @click="theme = theme === 'light' ? 'dark' : 'light'"
+                            :title="theme === 'light' ? 'Темна тема' : 'Світла тема'">
+                        <svg x-show="theme === 'light'" viewBox="0 0 24 24"><path d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C7.79,7.9 8.75,10.87 10.95,13.06C13.14,15.26 16.1,16.22 18.97,15.95Z"/></svg>
+                        <svg x-show="theme === 'dark'" viewBox="0 0 24 24"><path d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,5.42C13.65,5.15 12.84,5 12,5C11.16,5 10.35,5.15 9.61,5.42L12,2M3.34,7L7.5,6.65C6.9,7.16 6.36,7.78 5.94,8.5C5.5,9.24 5.25,10 5.11,10.79L3.34,7M3.36,17L5.12,13.23C5.26,14 5.53,14.78 5.95,15.5C6.37,16.24 6.91,16.86 7.5,17.37L3.36,17M20.65,7L18.88,10.79C18.74,10 18.47,9.23 18.05,8.5C17.63,7.78 17.1,7.15 16.5,6.64L20.65,7M20.64,17L16.5,17.36C17.09,16.85 17.62,16.22 18.04,15.5C18.46,14.77 18.73,14 18.87,13.21L20.64,17M12,22L9.59,18.56C10.33,18.83 11.14,19 12,19C12.82,19 13.63,18.83 14.37,18.56L12,22Z"/></svg>
+                    </button>
+                    <span class="datetime" x-data="{ time: '' }" x-init="setInterval(() => time = new Date().toLocaleString('uk-UA'), 1000)" x-text="time"></span>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="admin-content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
