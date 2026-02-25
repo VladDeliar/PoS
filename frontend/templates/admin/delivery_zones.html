@@ -51,6 +51,55 @@
                         </div>
                     </template>
                 </div>
+
+                <!-- Coordinate Checker -->
+                <div class="coord-checker">
+                    <div class="coord-checker-header">
+                        <span class="coord-checker-title">Перевірити координати</span>
+                        <button type="button" class="btn-icon btn-icon-danger"
+                                x-show="checkMarkers.length > 0"
+                                @click="clearAllCheckMarkers()"
+                                title="Очистити всі маркери">
+                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+                        </button>
+                    </div>
+                    <div class="coord-checker-row">
+                        <input type="text"
+                               class="coord-input"
+                               x-model="checkCoords"
+                               @keydown.enter.prevent="checkCoordinates()"
+                               placeholder="48.9149, 24.6972">
+                        <button type="button" class="btn btn-sm btn-secondary" @click="checkCoordinates()">
+                            Додати
+                        </button>
+                    </div>
+                    <div class="check-markers-list" x-show="checkMarkers.length > 0" x-cloak>
+                        <template x-for="(m, idx) in checkMarkers" :key="m.id">
+                            <div class="check-marker-entry">
+                                <span class="marker-index" x-text="idx + 1"></span>
+                                <div class="marker-info">
+                                    <span class="marker-coords" x-text="m.coords"></span>
+                                    <template x-if="m.result?.available">
+                                        <span class="coord-zone-found">
+                                            <span class="color-dot" :style="{ background: m.result.zone_color }"></span>
+                                            <span x-text="m.result.zone_name"></span>
+                                            <span x-text="'· ' + m.result.delivery_fee + ' ₴'"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="m.result && !m.result.available">
+                                        <span class="coord-zone-none">Поза зоною доставки</span>
+                                    </template>
+                                    <template x-if="!m.result">
+                                        <span class="coord-loading">Перевірка...</span>
+                                    </template>
+                                </div>
+                                <button type="button" class="btn-icon" @click="removeCheckMarker(m.id)" title="Видалити маркер">
+                                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
             </div>
         </div>
 

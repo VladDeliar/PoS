@@ -37,6 +37,20 @@ async def create_category(data: CategoryCreate):
     return {"_id": str(result.inserted_id), **data.model_dump()}
 
 
+@router.put("/{category_id}")
+async def update_category(category_id: str, data: CategoryCreate):
+    if not database.connected or database.categories is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    result = database.categories.update_one(
+        {"_id": ObjectId(category_id)},
+        {"$set": data.model_dump()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    await redis_manager.invalidate_key(CACHE_CATEGORIES)
+    return {"status": "updated"}
+
+
 @router.delete("/{category_id}")
 async def delete_category(category_id: str):
     if not database.connected or database.categories is None:

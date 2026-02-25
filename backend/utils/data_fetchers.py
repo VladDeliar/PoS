@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from bson import ObjectId
 
 from .. import database
@@ -6,24 +8,35 @@ from ..utils.demo_data import DEMO_CATEGORIES, DEMO_PRODUCTS, DEMO_MENU_ITEMS
 
 
 def init_default_data():
-    """Initialize default categories if empty"""
-    if not database.connected or database.categories is None:
+    """Initialize default data if empty"""
+    _init_default_customer_categories()
+
+
+def _init_default_customer_categories():
+    """Initialize default customer categories if empty"""
+    if not database.connected or database.customer_categories is None:
         return
-    if database.categories.count_documents({}) == 0:
-        default_categories = [
-            {"name": "Популярне", "icon": "star", "sort_order": 0},
-            {"name": "Кава", "icon": "coffee", "sort_order": 1},
-            {"name": "Напої", "icon": "cup", "sort_order": 2},
-            {"name": "Сніданки", "icon": "sun", "sort_order": 3},
-            {"name": "Сендвічі", "icon": "sandwich", "sort_order": 4},
-            {"name": "Салати", "icon": "leaf", "sort_order": 5},
-            {"name": "Паста", "icon": "bowl", "sort_order": 6},
-            {"name": "Бургери", "icon": "burger", "sort_order": 7},
-            {"name": "Піца", "icon": "pizza", "sort_order": 8},
-            {"name": "Десерти", "icon": "cake", "sort_order": 9},
+    if database.customer_categories.count_documents({}) == 0:
+        defaults = [
+            {
+                "name": "Друзі",
+                "discount_percent": 15,
+                "color": "#FF9800",
+                "description": "Знижка для друзів закладу",
+                "is_active": True,
+                "created_at": datetime.utcnow()
+            },
+            {
+                "name": "Постійні",
+                "discount_percent": 10,
+                "color": "#4CAF50",
+                "description": "Знижка для постійних клієнтів",
+                "is_active": True,
+                "created_at": datetime.utcnow()
+            }
         ]
-        database.categories.insert_many(default_categories)
-        print("Default categories created")
+        database.customer_categories.insert_many(defaults)
+        print("Default customer categories created")
 
 
 def get_categories_list():

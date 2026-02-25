@@ -1,0 +1,165 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Медіа слайдер{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/media_slider.css">
+{% endblock %}
+
+{% block content %}
+<div x-data="mediaSlider()" x-init="init()" x-cloak>
+
+    <!-- Page header -->
+    <div class="ms-page-header">
+        <div>
+            <h1 class="ms-title">Медіа слайдер</h1>
+            <p class="ms-subtitle">Завантажте <strong>фото</strong> або оберіть <strong>активні</strong> страви з фото для слайдера на головному екрані.</p>
+        </div>
+        <div class="ms-header-actions">
+            <label class="ms-toggle-label">
+                <input type="checkbox" x-model="enabled" class="ms-toggle-input">
+                <span class="ms-toggle-track">
+                    <span class="ms-toggle-thumb"></span>
+                </span>
+                <span x-text="enabled ? 'Увімкнено' : 'Вимкнено'" class="ms-toggle-text"></span>
+            </label>
+            <button class="btn-save ms-save-btn" @click="save()" :disabled="saving">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="flex-shrink:0">
+                    <path d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/>
+                </svg>
+                <span x-show="!saving">Зберегти</span>
+                <span x-show="saving">Збереження...</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Requirements info -->
+    <div class="ms-info-block">
+        <p>Вимоги до фотографій:</p>
+        <p>Формат – JPG, PNG</p>
+        <p>Розмір – макс 3 МБ.</p>
+        <p>Рекомендоване співвідношення сторін – 1024 × 768</p>
+    </div>
+
+    <!-- Add panel: upload + dish search side by side -->
+    <div class="ms-add-panel">
+
+        <!-- Dish search card -->
+        <div class="settings-card ms-search-card">
+            <h3>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/></svg>
+                Пошук по стравам
+            </h3>
+            <div class="ms-search-box">
+                <svg viewBox="0 0 24 24" class="ms-search-icon" fill="currentColor"><path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/></svg>
+                <input type="text" class="ms-search-input"
+                       x-model="dishSearch"
+                       placeholder="Пошук по стравам..."
+                       @input="filterDishes()">
+            </div>
+
+            <!-- Search results dropdown -->
+            <div class="ms-dish-results" x-show="dishSearch.trim().length > 0">
+                <div x-show="menuItemsLoading" class="ms-results-state">Завантаження...</div>
+                <div x-show="!menuItemsLoading && filteredDishes.length === 0" class="ms-results-state">Нічого не знайдено</div>
+                <template x-for="dish in filteredDishes" :key="dish.product_id || dish._id">
+                    <div class="ms-dish-row" @click="addDishItem(dish)">
+                        <img :src="dish.image || '/static/img/placeholder.svg'"
+                             :alt="dish.name"
+                             class="ms-dish-thumb"
+                             onerror="this.src='/static/img/placeholder.svg'">
+                        <div class="ms-dish-info">
+                            <span class="ms-dish-name" x-text="dish.name"></span>
+                            <span class="ms-dish-price" x-text="dish.price + ' грн'"></span>
+                        </div>
+                        <button class="ms-dish-add-btn" type="button" title="Додати до слайдера">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Image upload card -->
+        <div class="settings-card ms-upload-card">
+            <h3>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M14,13V17H10V13H7L12,8L17,13M19.35,10.03C18.67,6.59 15.64,4 12,4C9.11,4 6.6,5.64 5.35,8.03C2.34,8.36 0,10.9 0,14A6,6 0 0,0 6,20H19A5,5 0 0,0 24,15C24,12.36 21.95,10.22 19.35,10.03Z"/></svg>
+                Завантажити зображення
+            </h3>
+            <div class="ms-upload-zone"
+                 @click="$refs.fileInput.click()"
+                 @dragover.prevent="uploadDragging = true"
+                 @dragleave.prevent="uploadDragging = false"
+                 @drop.prevent="handleFileDrop($event)"
+                 :class="{ 'dragging': uploadDragging, 'uploading': uploading }">
+                <template x-if="!uploading">
+                    <div class="ms-upload-placeholder">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14,13V17H10V13H7L12,8L17,13M19.35,10.03C18.67,6.59 15.64,4 12,4C9.11,4 6.6,5.64 5.35,8.03C2.34,8.36 0,10.9 0,14A6,6 0 0,0 6,20H19A5,5 0 0,0 24,15C24,12.36 21.95,10.22 19.35,10.03Z"/></svg>
+                        <p>Додайте файл</p>
+                        <span>JPG, PNG · Макс. 3 МБ</span>
+                    </div>
+                </template>
+                <template x-if="uploading">
+                    <div class="ms-upload-progress">
+                        <div class="ms-spinner"></div>
+                        <span>Завантаження...</span>
+                    </div>
+                </template>
+            </div>
+            <input type="file" x-ref="fileInput" accept=".jpg,.jpeg,.png" @change="onFileInputChange($event)" style="display:none">
+        </div>
+
+    </div><!-- /ms-add-panel -->
+
+    <!-- Slider items grid -->
+    <div class="settings-card ms-items-card">
+        <h3>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z"/></svg>
+            Елементи слайдера
+            <span class="ms-count" x-text="'(' + items.length + ')'"></span>
+        </h3>
+
+        <div x-show="items.length === 0" class="ms-items-empty">
+            Немає елементів. Завантажте зображення або виберіть страву вище.
+        </div>
+
+        <div class="ms-items-grid" x-show="items.length > 0">
+            <template x-for="(item, idx) in items" :key="item.id">
+                <div class="ms-item-thumb"
+                     draggable="true"
+                     @dragstart="onDragStart($event, idx)"
+                     @dragover.prevent="onDragOver($event, idx)"
+                     @drop.prevent="onDrop($event, idx)"
+                     @dragend="onDragEnd()"
+                     :class="{ 'drag-over': dragOverIdx === idx, 'is-dragging': dragSrcIdx === idx }">
+                    <img :src="item.type === 'dish' ? (item.image || '/static/img/placeholder.svg') : item.url"
+                         :alt="item.name || 'Зображення'"
+                         onerror="this.src='/static/img/placeholder.svg'">
+                    <div class="ms-item-overlay">
+                        <span class="ms-item-type-badge" x-text="item.type === 'dish' ? 'Страва' : 'Фото'"></span>
+                        <span class="ms-item-name" x-show="item.name" x-text="item.name"></span>
+                    </div>
+                    <button class="ms-item-remove" @click.stop="removeItem(idx)" type="button" title="Видалити">
+                        &times;
+                    </button>
+                </div>
+            </template>
+        </div>
+
+        <p class="ms-drag-hint" x-show="items.length > 1">
+            Перетягніть елементи для зміни порядку
+        </p>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast" :class="{ 'error': toastError }"
+         x-show="showToast" x-transition.opacity style="display:none">
+        <span x-text="toastMsg"></span>
+    </div>
+
+</div><!-- /x-data -->
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/media_slider.js"></script>
+{% endblock %}

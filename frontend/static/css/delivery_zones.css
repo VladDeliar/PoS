@@ -343,6 +343,139 @@
     padding: 30px !important;
 }
 
+/* Coordinate Checker */
+.coord-checker {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.coord-checker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.coord-checker-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-icon-danger {
+    color: var(--color-danger, #e53935);
+}
+
+.btn-icon-danger:hover {
+    background: rgba(229, 57, 53, 0.1);
+}
+
+.coord-checker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.check-markers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.check-marker-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
+}
+
+.marker-index {
+    width: 20px;
+    height: 20px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.marker-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.marker-coords {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.coord-loading {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    font-style: italic;
+}
+
+.coord-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    transition: border-color 0.2s;
+    min-width: 0;
+}
+
+.coord-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.coord-result {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 8px 12px;
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
+}
+
+.coord-zone-found {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+.coord-zone-none {
+    color: var(--color-text-tertiary);
+    font-style: italic;
+}
+
 /* Center Marker */
 .center-marker-icon {
     background: none;
@@ -352,6 +485,13 @@
 .center-marker {
     font-size: 24px;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Check Marker Pin — Google Maps style (SVG) */
+.check-marker-icon {
+    background: none;
+    border: none;
+    overflow: visible;
 }
 
 /* Toast Notification */

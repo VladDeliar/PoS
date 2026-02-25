@@ -29,11 +29,19 @@
             </div>
             {% endif %}
             <div class="save-buttons">
-                <button class="save-btn" @click="saveAndStay()" title="Зберегти зміни">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/></svg>
-                    Зберегти
+                <button class="save-btn" @click="saveAndStay()" :disabled="saving" title="Зберегти зміни">
+                    <template x-if="saving">
+                        <svg viewBox="0 0 24 24" width="18" height="18" style="animation: spin 1s linear infinite;"><path fill="currentColor" d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z"/></svg>
+                    </template>
+                    <template x-if="!saving && saveSuccess">
+                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+                    </template>
+                    <template x-if="!saving && !saveSuccess">
+                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/></svg>
+                    </template>
+                    <span x-text="saving ? 'Збереження...' : (saveSuccess ? 'Збережено!' : 'Зберегти')"></span>
                 </button>
-                <button class="save-exit-btn" @click="saveAndExit()" title="Зберегти та повернутися до списку">
+                <button class="save-exit-btn" @click="saveAndExit()" :disabled="saving" title="Зберегти та повернутися до списку">
                     <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/></svg>
                     Зберегти і вийти
                 </button>
@@ -196,15 +204,21 @@ const dishData = {{ dish | tojson if dish else 'null' }};
 const mode = '{{ mode }}';
 const prevDishId = {{ prev_dish_id | tojson }};
 const nextDishId = {{ next_dish_id | tojson }};
+const defaultCategoryId = '{{ default_category_id | default("") }}';
+const returnProjectId = new URLSearchParams(window.location.search).get('project_id') || '';
 
 function dishFormApp() {
     return {
         mode: mode,
+        // dishId tracks the saved ID — after first POST it switches all future saves to PUT
+        dishId: dishData ? dishData._id : null,
         categories: categoriesData || [],
         modifiers: modifiersData || [],
         tags: tagsData || [],
         prevDishId: prevDishId,
         nextDishId: nextDishId,
+        saving: false,
+        saveSuccess: false,
 
         form: {
             name: '',
@@ -222,17 +236,6 @@ function dishFormApp() {
         },
 
         init() {
-            console.log('Initializing dishFormApp...');
-            console.log('Mode:', this.mode);
-            console.log('Dish data:', dishData);
-            console.log('Categories:', this.categories);
-            console.log('Prev ID:', this.prevDishId);
-            console.log('Next ID:', this.nextDishId);
-
-            if (this.categories.length > 0) {
-                this.form.category_id = this.categories[0]._id;
-            }
-
             if (dishData) {
                 this.form = {
                     name: dishData.name || '',
@@ -248,9 +251,15 @@ function dishFormApp() {
                     tags: dishData.tags || [],
                     is_alcohol: dishData.is_alcohol || false
                 };
+            } else {
+                // Use $nextTick so the x-for options are rendered before we set the value.
+                // Without this, x-model can't find the matching <option> and the select stays on first item.
+                this.$nextTick(() => {
+                    if (this.categories.length > 0) {
+                        this.form.category_id = defaultCategoryId || this.categories[0]._id;
+                    }
+                });
             }
-
-            console.log('Form after init:', this.form);
         },
 
         toggleModifier(modId) {
@@ -272,57 +281,78 @@ function dishFormApp() {
         },
 
         async saveDish(redirect = true) {
+            if (this.saving) return;
+            this.saving = true;
             try {
-                const url = this.mode === 'create'
-                    ? '/api/products'
-                    : `/api/products/${dishData._id}`;
-                const method = this.mode === 'create' ? 'POST' : 'PUT';
+                // Use dishId to determine create vs update — not the initial 'mode' string
+                const url = this.dishId
+                    ? `/api/products/${this.dishId}`
+                    : '/api/products';
+                const method = this.dishId ? 'PUT' : 'POST';
 
                 const response = await fetch(url, {
-                    method: method,
+                    method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(this.form)
                 });
 
                 if (!response.ok) throw new Error('Save failed');
 
+                const saved = await response.json();
+
+                // After first creation — switch to edit mode so all future saves use PUT
+                if (!this.dishId && saved._id) {
+                    this.dishId = saved._id;
+                    this.mode = 'edit';
+                    // Update browser URL without page reload
+                    history.replaceState(null, '', `/admin/dishes/edit/${this.dishId}`);
+                }
+
                 if (redirect) {
-                    // Redirect back to assortment
-                    window.location.href = '/admin/assortment';
+                    const params = new URLSearchParams();
+                    if (this.form.category_id) params.set('category_id', this.form.category_id);
+                    if (returnProjectId) params.set('project_id', returnProjectId);
+                    const q = params.toString();
+                    window.location.href = '/admin/assortment' + (q ? '?' + q : '');
                 } else {
-                    // Show success message and stay on page
-                    alert('Зміни збережено успішно!');
+                    this.showSaveSuccess();
                 }
             } catch (error) {
                 console.error('Error saving dish:', error);
                 alert('Помилка при збереженні страви');
+            } finally {
+                this.saving = false;
             }
         },
 
+        showSaveSuccess() {
+            this.saveSuccess = true;
+            setTimeout(() => { this.saveSuccess = false; }, 2500);
+        },
+
         async saveAndStay() {
-            console.log('Saving and staying...');
             await this.saveDish(false);
         },
 
         async saveAndExit() {
-            console.log('Saving and exiting...');
             await this.saveDish(true);
         },
 
         goBack() {
-            console.log('Going back to assortment...');
-            window.location.href = '/admin/assortment';
+            const params = new URLSearchParams();
+            if (this.form.category_id) params.set('category_id', this.form.category_id);
+            if (returnProjectId) params.set('project_id', returnProjectId);
+            const q = params.toString();
+            window.location.href = '/admin/assortment' + (q ? '?' + q : '');
         },
 
         navigateToPrev() {
-            console.log('Navigating to previous:', this.prevDishId);
             if (this.prevDishId) {
                 window.location.href = `/admin/dishes/edit/${this.prevDishId}`;
             }
         },
 
         navigateToNext() {
-            console.log('Navigating to next:', this.nextDishId);
             if (this.nextDishId) {
                 window.location.href = `/admin/dishes/edit/${this.nextDishId}`;
             }

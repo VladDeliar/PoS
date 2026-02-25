@@ -3,7 +3,7 @@
 {% block page_title %}Категорії{% endblock %}
 
 {% block content %}
-<div x-data="categoriesApp()" x-init="loadCategories()">
+<div x-data="categoriesApp()" x-init="init()">
     <!-- Header -->
     <div class="page-header">
         <button class="btn btn-primary" @click="openModal()">
@@ -12,25 +12,48 @@
         </button>
     </div>
 
+    <!-- Project filter tabs -->
+    <div class="card" style="padding: 12px 16px; margin-bottom: 12px;" x-show="projects.length > 0">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button class="category-pill" :class="{ active: selectedProject === null }" @click="selectedProject = null">
+                Всі
+            </button>
+            <button class="category-pill" style="background: #f0f4ff; color: #555;"
+                    :class="{ active: selectedProject === '__none__' }" @click="selectedProject = '__none__'">
+                Без проєкту
+            </button>
+            <template x-for="proj in projects" :key="proj._id">
+                <button class="category-pill" :class="{ active: selectedProject === proj._id }" @click="selectedProject = proj._id" x-text="proj.name"></button>
+            </template>
+        </div>
+    </div>
+
     <!-- Categories List -->
     <div class="card">
         <div class="table-wrapper">
-            <table class="table" x-show="categories.length > 0">
+            <table class="table" x-show="filteredCategories.length > 0">
                 <thead>
                     <tr>
                         <th>Іконка</th>
                         <th>Назва</th>
+                        <th>Проєкт</th>
                         <th>Порядок</th>
                         <th>Дії</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <template x-for="cat in categories" :key="cat._id">
+                    <template x-for="cat in filteredCategories" :key="cat._id">
                         <tr>
                             <td>
                                 <span class="cat-icon-preview" x-html="getIcon(cat.icon)"></span>
                             </td>
                             <td x-text="cat.name"></td>
+                            <td>
+                                <span x-show="cat.project_id" class="status-badge"
+                                      x-text="getProjectName(cat.project_id)"
+                                      style="background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;"></span>
+                                <span x-show="!cat.project_id" style="color: var(--color-text-muted);">—</span>
+                            </td>
                             <td x-text="cat.sort_order"></td>
                             <td>
                                 <button class="btn-icon danger" @click="deleteCategory(cat._id)" title="Видалити">
@@ -43,7 +66,7 @@
             </table>
         </div>
 
-        <div class="empty-state" x-show="categories.length === 0">
+        <div class="empty-state" x-show="filteredCategories.length === 0">
             <h3>Категорії відсутні</h3>
         </div>
     </div>
@@ -77,6 +100,15 @@
                             <option value="tag">Тег</option>
                         </select>
                     </div>
+                    <div class="form-group" x-show="projects.length > 0">
+                        <label class="form-label">Проєкт</label>
+                        <select class="form-select" x-model="form.project_id">
+                            <option value="">— без проєкту —</option>
+                            <template x-for="proj in projects" :key="proj._id">
+                                <option :value="proj._id" x-text="proj.name"></option>
+                            </template>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label class="form-label">Порядок сортування</label>
                         <input type="number" class="form-input" x-model="form.sort_order">
@@ -95,11 +127,18 @@
 function categoriesApp() {
     return {
         categories: [],
+        projects: [],
+        selectedProject: null,
         showModal: false,
         form: {
             name: '',
             icon: 'tag',
-            sort_order: 0
+            sort_order: 0,
+            project_id: ''
+        },
+
+        async init() {
+            await Promise.all([this.loadCategories(), this.loadProjects()]);
         },
 
         async loadCategories() {
@@ -111,17 +150,46 @@ function categoriesApp() {
             }
         },
 
+        async loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                this.projects = await response.json();
+            } catch (error) {
+                console.error('Error loading projects:', error);
+            }
+        },
+
+        get filteredCategories() {
+            if (this.selectedProject === null) return this.categories;
+            if (this.selectedProject === '__none__') return this.categories.filter(c => !c.project_id);
+            return this.categories.filter(c => c.project_id === this.selectedProject);
+        },
+
+        getProjectName(projectId) {
+            if (!projectId) return '';
+            const proj = this.projects.find(p => p._id === projectId);
+            return proj ? proj.name : '';
+        },
+
         openModal() {
-            this.form = { name: '', icon: 'tag', sort_order: this.categories.length };
+            const defaultProjectId = (this.selectedProject && this.selectedProject !== '__none__') ? this.selectedProject : '';
+            this.form = {
+                name: '',
+                icon: 'tag',
+                sort_order: this.categories.length,
+                project_id: defaultProjectId
+            };
             this.showModal = true;
         },
 
         async saveCategory() {
+            const payload = { ...this.form };
+            if (!payload.project_id) payload.project_id = null;
             try {
                 await fetch('/api/categories', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(this.form)
+                    body: JSON.stringify(payload)
                 });
                 this.showModal = false;
                 await this.loadCategories();

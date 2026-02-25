@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from bson import ObjectId
@@ -59,7 +60,7 @@ async def admin_dishes_page(request: Request):
 
 
 @router.get("/dishes/create", response_class=HTMLResponse)
-async def admin_dish_create_page(request: Request):
+async def admin_dish_create_page(request: Request, category_id: Optional[str] = None):
     """Page for creating a new dish"""
     cats = get_categories_list()
     mods = await _get_modifiers_cached()
@@ -74,7 +75,8 @@ async def admin_dish_create_page(request: Request):
         "dish": None,
         "mode": "create",
         "prev_dish_id": None,
-        "next_dish_id": None
+        "next_dish_id": None,
+        "default_category_id": category_id or ""
     })
 
 
@@ -109,7 +111,8 @@ async def admin_dish_edit_page(request: Request, dish_id: str):
         "dish": serialize_all(dish),
         "mode": "edit",
         "prev_dish_id": prev_dish_id,
-        "next_dish_id": next_dish_id
+        "next_dish_id": next_dish_id,
+        "default_category_id": ""
     })
 
 
@@ -182,5 +185,30 @@ async def admin_delivery_zones_page(request: Request):
 @router.get("/store-design", response_class=HTMLResponse)
 async def admin_store_design_page(request: Request):
     return templates.TemplateResponse("admin/store_design.html", {"request": request})
+
+
+@router.get("/branches", response_class=HTMLResponse)
+async def admin_branches_page(request: Request):
+    return templates.TemplateResponse("admin/branches.html", {"request": request})
+
+
+@router.get("/customers", response_class=HTMLResponse)
+async def admin_customers_page(request: Request):
+    return templates.TemplateResponse("admin/customers.html", {"request": request})
+
+
+@router.get("/customer-categories", response_class=HTMLResponse)
+async def admin_customer_categories_page(request: Request):
+    return templates.TemplateResponse("admin/customer_categories.html", {"request": request})
+
+
+@router.get("/site-pages", response_class=HTMLResponse)
+async def admin_site_pages_page(request: Request):
+    return templates.TemplateResponse("admin/site_pages.html", {"request": request})
+
+
+@router.get("/media-slider", response_class=HTMLResponse)
+async def admin_media_slider_page(request: Request):
+    return templates.TemplateResponse("admin/media_slider.html", {"request": request})
 
 

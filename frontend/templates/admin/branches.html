@@ -1,0 +1,825 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Філії{% endblock %}
+
+{% block extra_css %}
+<style>
+.settings-card {
+    background: var(--color-bg-card);
+    border-radius: 16px;
+    padding: 25px;
+    border: 2px solid var(--color-border);
+    margin-bottom: 20px;
+}
+
+.settings-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    color: var(--color-text-primary);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-hint {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 5px;
+    text-align: right;
+}
+
+.btn-save {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 32px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-save:hover {
+    background: var(--color-primary-dark);
+}
+
+.btn-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-add:hover {
+    background: var(--color-primary-dark);
+}
+
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-back:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* Branches table */
+.branches-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.branches-table th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.branches-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.branches-table tr:hover td {
+    background: var(--color-bg);
+    cursor: pointer;
+}
+
+.branches-table tr:last-child td {
+    border-bottom: none;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-badge.inactive {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.btn-delete {
+    padding: 6px 12px;
+    background: transparent;
+    color: #c62828;
+    border: 1px solid #c62828;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-delete:hover {
+    background: #ffebee;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+/* Toggle switch */
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    border-radius: 26px;
+    transition: 0.3s;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: var(--color-primary);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(22px);
+}
+
+.toggle-label {
+    font-size: 0.95rem;
+    color: var(--color-text-primary);
+}
+
+/* Schedule */
+.schedule-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.schedule-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.schedule-row .day-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 140px;
+    flex-shrink: 0;
+}
+
+.schedule-row .day-check input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+.schedule-row .day-name {
+    font-size: 0.95rem;
+    color: var(--color-text-primary);
+}
+
+.schedule-row input[type="time"] {
+    padding: 8px 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: 0.95rem;
+    width: 110px;
+}
+
+.schedule-row input[type="time"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.schedule-row input[type="time"]:disabled {
+    opacity: 0.4;
+}
+
+.schedule-row .time-sep {
+    color: var(--color-text-muted);
+}
+
+/* Domain input */
+.domain-input-wrapper {
+    display: flex;
+    align-items: stretch;
+}
+
+.domain-input-wrapper input {
+    border-radius: 8px 0 0 8px;
+    border-right: none;
+    flex: 1;
+}
+
+.domain-suffix {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    background: var(--color-bg);
+    border: 2px solid var(--color-border);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+/* Checkbox label */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    color: var(--color-text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+/* Page header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 25px;
+    background: #4CAF50;
+    color: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+}
+
+.toast.error {
+    background: #f44336;
+}
+
+/* Onboarding banner */
+.onboarding-banner {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark, #2e7d32) 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+}
+
+.onboarding-banner h2 {
+    margin: 0 0 8px 0;
+    font-size: 1.4rem;
+}
+
+.onboarding-banner p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    .schedule-row {
+        flex-wrap: wrap;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="branchesApp()" x-init="init()">
+
+    <!-- LIST VIEW -->
+    <div x-show="!showForm">
+        <div class="page-header">
+            <div></div>
+            <button class="btn-add" @click="createNew()">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                Додати філію
+            </button>
+        </div>
+
+        <div class="settings-card">
+            <template x-if="branches.length > 0">
+                <table class="branches-table">
+                    <thead>
+                        <tr>
+                            <th>Назва</th>
+                            <th>Адреса</th>
+                            <th>Домен</th>
+                            <th>Статус</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="branch in branches" :key="branch._id">
+                            <tr @click="editBranch(branch)">
+                                <td x-text="branch.name"></td>
+                                <td x-text="branch.address || '—'"></td>
+                                <td>
+                                    <span x-text="branch.base_domain ? branch.base_domain + '.clover.ua' : '—'"></span>
+                                </td>
+                                <td>
+                                    <span class="status-badge"
+                                          :class="branch.is_active ? 'active' : 'inactive'"
+                                          x-text="branch.is_active ? 'Активна' : 'Неактивна'"></span>
+                                </td>
+                                <td>
+                                    <button class="btn-delete" @click.stop="deleteBranch(branch._id)">Видалити</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </template>
+            <template x-if="branches.length === 0">
+                <div class="empty-state">
+                    Немає філій. Натисніть «Додати філію» для створення.
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- FORM VIEW -->
+    <div x-show="showForm">
+        <!-- Onboarding welcome banner -->
+        <div class="onboarding-banner" x-show="isOnboarding">
+            <h2>Ласкаво просимо!</h2>
+            <p>Для початку роботи створіть вашу першу філію — це ваш заклад у системі.</p>
+        </div>
+
+        <div class="page-header">
+            <button class="btn-back" @click="cancelForm()" x-show="!isOnboarding">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/></svg>
+                Назад до списку
+            </button>
+            <div x-show="isOnboarding"></div>
+            <h2 x-text="editingId ? 'Редагувати філію' : 'Нова філія'" style="margin: 0;"></h2>
+            <div></div>
+        </div>
+
+        <form @submit.prevent="saveBranch()">
+            <!-- Toggles -->
+            <div class="settings-card">
+                <div class="toggle-row">
+                    <label class="toggle-switch">
+                        <input type="checkbox" :checked="!form.is_active" @change="form.is_active = !$event.target.checked">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label">Філія неактивна</span>
+                </div>
+                <div class="toggle-row" style="margin-bottom: 0;">
+                    <label class="toggle-switch">
+                        <input type="checkbox" :checked="!form.feedback_enabled" @change="form.feedback_enabled = !$event.target.checked">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label">Feedback для замовлень вимкнено</span>
+                </div>
+            </div>
+
+            <!-- Branch name heading -->
+            <h3 style="color: var(--color-text-primary); margin-bottom: 16px;" x-text="form.name || 'Назва філії'"></h3>
+
+            <!-- Main info -->
+            <div class="settings-card">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Назва *</label>
+                        <input type="text" x-model="form.name" required maxlength="50" placeholder="Назва">
+                        <div class="form-hint"><span x-text="(form.name || '').length"></span>/50</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Адреса</label>
+                        <input type="text" x-model="form.address" placeholder="Адреса">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Опис</label>
+                    <textarea x-model="form.description" maxlength="500" rows="5" placeholder="Опис"></textarea>
+                    <div class="form-hint"><span x-text="(form.description || '').length"></span>/500</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Телефон</label>
+                    <input type="text" x-model="form.phone" placeholder="Телефон">
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" x-model="form.email" placeholder="Email">
+                </div>
+
+                <div class="form-group">
+                    <label>Назва Wi-Fi</label>
+                    <input type="text" x-model="form.wifi_name" placeholder="Назва Wi-Fi">
+                </div>
+
+                <div class="form-group">
+                    <label>Пароль Wi-Fi</label>
+                    <input type="text" x-model="form.wifi_password" placeholder="Пароль Wi-Fi">
+                </div>
+            </div>
+
+            <!-- Timezone & Schedule -->
+            <div class="settings-card">
+                <div class="form-group">
+                    <label>Часовий пояс *</label>
+                    <select x-model="form.timezone" required>
+                        <option value="Europe/Kyiv">Europe/Kyiv</option>
+                        <option value="Europe/Warsaw">Europe/Warsaw</option>
+                        <option value="Europe/Berlin">Europe/Berlin</option>
+                        <option value="Europe/London">Europe/London</option>
+                        <option value="Europe/Paris">Europe/Paris</option>
+                        <option value="Europe/Rome">Europe/Rome</option>
+                        <option value="Europe/Madrid">Europe/Madrid</option>
+                        <option value="Europe/Bucharest">Europe/Bucharest</option>
+                        <option value="Europe/Istanbul">Europe/Istanbul</option>
+                        <option value="Europe/Moscow">Europe/Moscow</option>
+                    </select>
+                </div>
+
+                <h3 style="margin-top: 0;">Графік роботи</h3>
+                <div class="schedule-grid">
+                    <template x-for="(day, index) in form.schedule" :key="day.day">
+                        <div class="schedule-row">
+                            <div class="day-check">
+                                <input type="checkbox" x-model="day.enabled">
+                                <span class="day-name" x-text="dayNames[day.day]"></span>
+                            </div>
+                            <input type="time" x-model="day.open_time" :disabled="!day.enabled">
+                            <span class="time-sep">-</span>
+                            <input type="time" x-model="day.close_time" :disabled="!day.enabled">
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Domain -->
+            <div class="settings-card">
+                <h3 style="margin-top: 0;">Базове доменне ім'я *</h3>
+                <div class="form-group">
+                    <div class="domain-input-wrapper">
+                        <input type="text" x-model="form.base_domain" required placeholder="">
+                        <span class="domain-suffix">.clover.ua</span>
+                    </div>
+                </div>
+
+                <h3>Персональне доменне ім'я</h3>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <input type="text" x-model="form.custom_domain" placeholder="">
+                </div>
+            </div>
+
+            <!-- Social Networks -->
+            <div class="settings-card">
+                <h3 style="margin-top: 0;">Соціальні мережі</h3>
+
+                <div class="form-group">
+                    <input type="text" x-model="form.facebook" placeholder="Facebook">
+                </div>
+                <div class="form-group">
+                    <input type="text" x-model="form.instagram" placeholder="Instagram">
+                </div>
+                <div class="form-group">
+                    <input type="text" x-model="form.viber" placeholder="Viber">
+                </div>
+                <div class="form-group">
+                    <input type="text" x-model="form.whatsapp" placeholder="WhatsApp">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <input type="text" x-model="form.telegram_link" placeholder="Telegram">
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="settings-card">
+                <h3 style="margin-top: 0;">Інформація у футері</h3>
+
+                <label class="checkbox-label">
+                    <input type="checkbox" x-model="form.terms_of_use">
+                    Умови використання
+                </label>
+                <label class="checkbox-label" style="margin-bottom: 0;">
+                    <input type="checkbox" x-model="form.privacy_policy">
+                    Політика конфіденційності
+                </label>
+            </div>
+
+            <!-- Save -->
+            <button type="submit" class="btn-save" :disabled="saving">
+                <span x-text="saving ? 'Збереження...' : 'Зберегти'"></span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" :class="{ 'error': toastError }" x-show="showToast" x-transition.opacity>
+        <span x-text="toastMessage"></span>
+    </div>
+</div>
+
+<script>
+function branchesApp() {
+    return {
+        branches: [],
+        showForm: false,
+        editingId: null,
+        saving: false,
+        form: {},
+        isOnboarding: new URLSearchParams(window.location.search).get('onboarding') === '1',
+        dayNames: {
+            monday: 'Понеділок',
+            tuesday: 'Вівторок',
+            wednesday: 'Середа',
+            thursday: 'Четвер',
+            friday: "П'ятниця",
+            saturday: 'Субота',
+            sunday: 'Неділя'
+        },
+        showToast: false,
+        toastMessage: '',
+        toastError: false,
+
+        async init() {
+            this.form = this.defaultForm();
+            await this.loadBranches();
+            if (this.isOnboarding) {
+                this.createNew();
+            }
+        },
+
+        defaultForm() {
+            return {
+                name: '',
+                address: '',
+                description: '',
+                phone: '',
+                email: '',
+                wifi_name: '',
+                wifi_password: '',
+                timezone: 'Europe/Kyiv',
+                schedule: [
+                    { day: 'monday', enabled: true, open_time: '08:00', close_time: '22:00' },
+                    { day: 'tuesday', enabled: true, open_time: '08:00', close_time: '22:00' },
+                    { day: 'wednesday', enabled: true, open_time: '08:00', close_time: '22:00' },
+                    { day: 'thursday', enabled: true, open_time: '08:00', close_time: '22:00' },
+                    { day: 'friday', enabled: true, open_time: '08:00', close_time: '22:00' },
+                    { day: 'saturday', enabled: true, open_time: '08:00', close_time: '22:00' },
+                    { day: 'sunday', enabled: true, open_time: '08:00', close_time: '22:00' }
+                ],
+                base_domain: '',
+                custom_domain: '',
+                is_active: true,
+                feedback_enabled: true,
+                facebook: '',
+                instagram: '',
+                viber: '',
+                whatsapp: '',
+                telegram_link: '',
+                terms_of_use: false,
+                privacy_policy: false
+            };
+        },
+
+        async loadBranches() {
+            try {
+                const response = await fetch('/api/branches');
+                if (response.ok) {
+                    this.branches = await response.json();
+                }
+            } catch (error) {
+                console.error('Error loading branches:', error);
+            }
+        },
+
+        createNew() {
+            this.editingId = null;
+            this.form = this.defaultForm();
+            this.showForm = true;
+            window.scrollTo(0, 0);
+        },
+
+        editBranch(branch) {
+            this.editingId = branch._id;
+            const form = this.defaultForm();
+            // Merge branch data into form defaults
+            Object.keys(form).forEach(key => {
+                if (branch[key] !== undefined) {
+                    form[key] = branch[key];
+                }
+            });
+            // Ensure schedule has all 7 days
+            if (branch.schedule && branch.schedule.length === 7) {
+                form.schedule = JSON.parse(JSON.stringify(branch.schedule));
+            }
+            this.form = form;
+            this.showForm = true;
+            window.scrollTo(0, 0);
+        },
+
+        cancelForm() {
+            this.showForm = false;
+            this.editingId = null;
+        },
+
+        async saveBranch() {
+            if (!this.form.name.trim()) {
+                this.showNotification('Введіть назву філії', true);
+                return;
+            }
+            if (!this.form.base_domain.trim()) {
+                this.showNotification('Введіть базове доменне ім\'я', true);
+                return;
+            }
+
+            this.saving = true;
+            try {
+                const url = this.editingId
+                    ? `/api/branches/${this.editingId}`
+                    : '/api/branches';
+                const method = this.editingId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.form)
+                });
+
+                if (response.ok) {
+                    this.showNotification('Філію збережено');
+                    if (this.isOnboarding) {
+                        window.location.href = '/admin/settings';
+                    } else {
+                        await this.loadBranches();
+                        this.showForm = false;
+                        this.editingId = null;
+                    }
+                } else {
+                    const err = await response.json();
+                    this.showNotification(err.detail || 'Помилка збереження', true);
+                }
+            } catch (error) {
+                this.showNotification('Помилка збереження', true);
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        async deleteBranch(id) {
+            if (!confirm('Видалити цю філію?')) return;
+
+            try {
+                const response = await fetch(`/api/branches/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    this.showNotification('Філію видалено');
+                    await this.loadBranches();
+                } else {
+                    this.showNotification('Помилка видалення', true);
+                }
+            } catch (error) {
+                this.showNotification('Помилка видалення', true);
+            }
+        },
+
+        showNotification(message, isError = false) {
+            this.toastMessage = message;
+            this.toastError = isError;
+            this.showToast = true;
+            setTimeout(() => this.showToast = false, 3000);
+        }
+    };
+}
+</script>
+{% endblock %}

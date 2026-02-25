@@ -1,11 +1,20 @@
+import os
+import uuid as _uuid
 from typing import List
+from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
 
 from .. import database
 from ..dependencies import runtime_settings
 from ..models import StorefrontConfig, PageBuilderConfig
+
+_BASE_DIR = Path(__file__).parent.parent.parent
+_SLIDER_UPLOAD_DIR = _BASE_DIR / "frontend" / "static" / "uploads" / "slider"
+_SLIDER_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+_ALLOWED_IMG_EXT = {".jpg", ".jpeg", ".png"}
+_MAX_IMG_SIZE = 3 * 1024 * 1024
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -26,6 +35,8 @@ async def get_settings():
                 runtime_settings["order_types"] = db_settings["order_types"]
             if db_settings.get("storefront"):
                 runtime_settings["storefront"] = db_settings["storefront"]
+            if db_settings.get("card_surcharge"):
+                runtime_settings["card_surcharge"] = db_settings["card_surcharge"]
 
     return runtime_settings
 
@@ -114,6 +125,31 @@ async def save_delivery_settings(
         database.settings.update_one(
             {"_id": "app_settings"},
             {"$set": {"delivery": runtime_settings["delivery"]}},
+            upsert=True
+        )
+
+    return {"status": "saved"}
+
+
+@router.get("/card-surcharge")
+async def get_card_surcharge_settings():
+    """Get card surcharge percentage"""
+    if database.connected and database.settings is not None:
+        db_settings = database.settings.find_one({"_id": "app_settings"})
+        if db_settings and db_settings.get("card_surcharge"):
+            runtime_settings["card_surcharge"] = db_settings["card_surcharge"]
+    return runtime_settings.get("card_surcharge", {"percent": 0})
+
+
+@router.post("/card-surcharge")
+async def save_card_surcharge_settings(percent: float = 0):
+    """Save card surcharge percentage"""
+    runtime_settings["card_surcharge"] = {"percent": percent}
+
+    if database.connected and database.settings is not None:
+        database.settings.update_one(
+            {"_id": "app_settings"},
+            {"$set": {"card_surcharge": runtime_settings["card_surcharge"]}},
             upsert=True
         )
 
@@ -354,4 +390,63 @@ async def save_storefront_settings(request: Request):
             upsert=True
         )
 
+    return {"status": "saved"}
+
+
+# ─────────────────────────────────────────────────────────
+# Media Slider
+# ─────────────────────────────────────────────────────────
+
+@router.post("/media-slider/upload")
+async def upload_slider_image(file: UploadFile = File(...)):
+    """Upload an image for the media slider. Returns the public URL."""
+    contents = await file.read()
+    ext = Path(file.filename).suffix.lower()
+    if ext not in _ALLOWED_IMG_EXT:
+        raise HTTPException(status_code=400, detail="Тільки JPG або PNG файли")
+    if len(contents) > _MAX_IMG_SIZE:
+        raise HTTPException(status_code=400, detail="Файл занадто великий (макс. 3 МБ)")
+    fname = f"{_uuid.uuid4().hex}{ext}"
+    (_SLIDER_UPLOAD_DIR / fname).write_bytes(contents)
+    return {"url": f"/static/uploads/slider/{fname}"}
+
+
+@router.delete("/media-slider/image")
+async def delete_slider_image(path: str = Query(...)):
+    """Delete a slider image file from disk."""
+    if not path.startswith("/static/uploads/slider/"):
+        raise HTTPException(status_code=400, detail="Invalid image path")
+    full_path = _BASE_DIR / "frontend" / path.lstrip("/")
+    try:
+        os.remove(full_path)
+    except FileNotFoundError:
+        pass
+    return {"status": "deleted"}
+
+
+@router.get("/media-slider")
+async def get_media_slider():
+    """Get media slider configuration."""
+    if database.connected and database.settings is not None:
+        doc = database.settings.find_one({"_id": "app_settings"})
+        if doc and doc.get("media_slider"):
+            runtime_settings["media_slider"] = doc["media_slider"]
+    return runtime_settings.get("media_slider", {"enabled": False, "items": []})
+
+
+@router.post("/media-slider")
+async def save_media_slider(request: Request):
+    """Save media slider configuration."""
+    data = await request.json()
+    slider = {
+        "enabled": bool(data.get("enabled", False)),
+        "items": data.get("items", [])
+    }
+    runtime_settings["media_slider"] = slider
+    if database.connected and database.settings is not None:
+        database.settings.update_one(
+            {"_id": "app_settings"},
+            {"$set": {"media_slider": slider}},
+            upsert=True
+        )
     return {"status": "saved"}

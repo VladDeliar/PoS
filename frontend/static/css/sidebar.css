@@ -2,22 +2,22 @@
 
 /* Project Header */
 .sidebar-project {
-    padding: 24px 20px;
+    padding: 14px 16px;
     border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
 .project-name {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     color: white;
     font-weight: 600;
-    font-size: 1rem;
-    margin-bottom: 4px;
+    font-size: 0.875rem;
+    margin-bottom: 2px;
 }
 
 .project-icon {
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
 .project-badge {
@@ -34,16 +34,16 @@
 
 /* Navigation Sections */
 .sidebar-section {
-    padding: 20px 10px 10px;
+    padding: 10px 6px 4px;
 }
 
 .section-title {
-    padding: 0 15px 8px;
-    font-size: 0.75rem;
+    padding: 0 11px 5px;
+    font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.8px;
+    color: rgba(255,255,255,0.45);
 }
 
 /* Expandable Settings Section */
@@ -81,13 +81,13 @@
 .nav-subitem {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 15px;
+    gap: 8px;
+    padding: 6px 11px;
     color: rgba(255,255,255,0.6);
     text-decoration: none;
-    border-radius: 8px;
-    margin-bottom: 4px;
-    font-size: 0.9rem;
+    border-radius: 7px;
+    margin-bottom: 2px;
+    font-size: 0.8rem;
     transition: all 0.2s;
 }
 
@@ -118,7 +118,7 @@
 
 /* Language Selector */
 .sidebar-language {
-    padding: 15px;
+    padding: 10px;
     border-top: 1px solid rgba(255,255,255,0.1);
 }
 
@@ -131,7 +131,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 15px;
+    padding: 7px 11px;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 8px;
@@ -148,12 +148,12 @@
 .language-current {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
+    gap: 6px;
+    font-size: 0.8rem;
 }
 
 .language-flag {
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
 .language-dropdown {
@@ -182,8 +182,8 @@
 .language-option {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 15px;
+    gap: 8px;
+    padding: 9px 12px;
     color: rgba(255,255,255,0.8);
     cursor: pointer;
     transition: all 0.2s;
@@ -205,12 +205,12 @@
 }
 
 .language-option .language-flag {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
 }
 
 .language-option .language-name {
     flex: 1;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
 }
 
 .language-option .check-icon {

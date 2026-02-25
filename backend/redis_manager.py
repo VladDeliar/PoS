@@ -88,6 +88,8 @@ CACHE_PRODUCT_TAGS = "cache:product_tags"
 CACHE_DELIVERY_ZONES = "cache:delivery_zones"
 CACHE_MODIFIERS = "cache:modifiers"
 CACHE_MENU_ITEMS = "cache:menu_items"
+CACHE_BRANCHES = "cache:branches"
+CACHE_SITE_PAGES = "cache:site_pages"
 
 # TTL values in seconds
 TTL_CATEGORIES = 3600       # 1 hour
@@ -95,5 +97,7 @@ TTL_PRODUCT_TAGS = 7200     # 2 hours
 TTL_DELIVERY_ZONES = 1800   # 30 minutes
 TTL_MODIFIERS = 7200        # 2 hours
 TTL_MENU_ITEMS = 900        # 15 minutes
+TTL_BRANCHES = 3600         # 1 hour
+TTL_SITE_PAGES = 1800       # 30 minutes
 
 redis_manager = RedisManager()

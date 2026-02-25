@@ -207,3 +207,6 @@ marimo/_lsp/
 __marimo__/
 .*
 !.gitignore
+
+# User uploaded files
+frontend/static/uploads/

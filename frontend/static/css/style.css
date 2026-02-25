@@ -81,6 +81,7 @@
 /* Global styles */
 html {
     scroll-behavior: smooth;
+    font-size: 14px;
 }
 
 * {
@@ -152,8 +153,8 @@ button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 12px 24px;
+    gap: 6px;
+    padding: 8px 16px;
     border: none;
     border-radius: var(--radius-md);
     font-weight: 500;
@@ -230,10 +231,10 @@ button {
 
 .form-input {
     width: 100%;
-    padding: 12px 15px;
+    padding: 8px 11px;
     border: 2px solid var(--color-border);
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.93rem;
     transition: border-color 0.2s;
     background: var(--color-bg-input);
     color: var(--color-text-primary);
@@ -263,10 +264,10 @@ button {
 
 .form-select {
     width: 100%;
-    padding: 12px 15px;
+    padding: 8px 11px;
     border: 2px solid var(--color-border);
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.93rem;
     background: var(--color-bg-input);
     color: var(--color-text-primary);
     cursor: pointer;
@@ -284,7 +285,7 @@ button {
 
 .table th,
 .table td {
-    padding: 12px 15px;
+    padding: 8px 12px;
     text-align: left;
     border-bottom: 1px solid var(--color-border-light);
 }
@@ -309,9 +310,9 @@ button {
 /* Badges */
 .badge {
     display: inline-block;
-    padding: 4px 12px;
+    padding: 3px 9px;
     border-radius: 20px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 500;
 }
 

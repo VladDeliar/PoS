@@ -74,6 +74,9 @@
                             </div>
                             <div class="card-footer">
                                 <span class="total" x-text="order.total + ' грн'"></span>
+                                <span class="payment-method-badge" x-show="order.payment_method && order.payment_method !== 'cash'"
+                                      x-text="order.payment_method === 'card' ? 'Картка' : 'Онлайн'"
+                                      style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: #e3f2fd; color: #1976D2;"></span>
                                 <span class="payment-badge" :class="order.payment_status" x-text="order.payment_status === 'paid' ? 'Оплачено' : 'Не оплачено'"></span>
                             </div>
                             <div class="card-actions">
@@ -170,6 +173,13 @@
                     <p x-show="selectedOrder?.table_number"><strong>Стіл:</strong> <span x-text="selectedOrder?.table_number"></span></p>
                     <p x-show="selectedOrder?.customer_name"><strong>Клієнт:</strong> <span x-text="selectedOrder?.customer_name"></span></p>
                     <p x-show="selectedOrder?.notes"><strong>Примітка:</strong> <span x-text="selectedOrder?.notes"></span></p>
+                    <p><strong>Оплата:</strong>
+                        <span x-text="{'cash':'Готівка','card':'Картка на місці','online':'Онлайн-оплата'}[selectedOrder?.payment_method] || 'Не вказано'"></span>
+                    </p>
+                    <p x-show="selectedOrder?.card_surcharge_amount > 0">
+                        <strong>Комісія за картку:</strong>
+                        <span x-text="'+' + selectedOrder?.card_surcharge_amount + ' грн (' + selectedOrder?.card_surcharge_percent + '%)'"></span>
+                    </p>
                 </div>
 
                 <h4>Товари:</h4>

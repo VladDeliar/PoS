@@ -1,0 +1,335 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Категорії клієнтів{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.cats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.cat-card {
+    background: var(--color-bg-card);
+    border-radius: 12px;
+    padding: 20px;
+    border: 2px solid var(--color-border);
+    transition: all 0.2s;
+}
+
+.cat-card:hover {
+    border-color: var(--color-primary);
+}
+
+.cat-card.inactive {
+    opacity: 0.6;
+}
+
+.cat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 12px;
+}
+
+.cat-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cat-color-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.cat-name h3 {
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.cat-discount {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #4CAF50;
+    margin-bottom: 8px;
+}
+
+.cat-description {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin-bottom: 16px;
+}
+
+.cat-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.cat-actions button {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+
+.btn-edit { background: var(--color-primary-light); color: var(--color-primary); }
+.btn-edit:hover { background: var(--color-primary); color: white; }
+.btn-toggle { background: #fff3e0; color: #ff9800; }
+.btn-toggle:hover { background: #ff9800; color: white; }
+.btn-delete { background: #ffebee; color: #f44336; }
+.btn-delete:hover { background: #f44336; color: white; }
+
+.badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+.badge-active { background: #e8f5e9; color: #4CAF50; }
+.badge-inactive { background: #ffebee; color: #f44336; }
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--color-bg-card);
+    border-radius: 16px;
+    padding: 30px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.modal-header h2 { margin: 0; font-size: 1.3rem; }
+.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--color-text-muted); }
+
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--color-text-primary); }
+.form-group input, .form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: 1rem;
+}
+.form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--color-primary); }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.form-hint { font-size: 0.8rem; color: var(--color-text-muted); margin-top: 5px; }
+
+.toggle-group { display: flex; align-items: center; gap: 10px; }
+.toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--color-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.toggle-switch.active { background: #4CAF50; }
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+.toggle-switch.active::after { transform: translateX(20px); }
+
+.btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-primary:hover { opacity: 0.9; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--color-text-muted); }
+.empty-state svg { width: 80px; height: 80px; opacity: 0.3; margin-bottom: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="customerCategoriesApp()" x-init="load()">
+    <div class="page-header">
+        <div>
+            <p style="color: var(--color-text-muted); margin: 0;">Всього: <strong x-text="categories.length"></strong> категорій</p>
+        </div>
+        <button class="btn-add" @click="openModal()">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+            Додати категорію
+        </button>
+    </div>
+
+    <div class="cats-grid" x-show="categories.length > 0">
+        <template x-for="cat in categories" :key="cat._id">
+            <div class="cat-card" :class="{ 'inactive': !cat.is_active }">
+                <div class="cat-header">
+                    <div class="cat-name">
+                        <span class="cat-color-dot" :style="'background:' + cat.color"></span>
+                        <h3 x-text="cat.name"></h3>
+                    </div>
+                    <span class="badge" :class="cat.is_active ? 'badge-active' : 'badge-inactive'" x-text="cat.is_active ? 'Активна' : 'Неактивна'"></span>
+                </div>
+                <div class="cat-discount" x-text="'-' + cat.discount_percent + '%'"></div>
+                <div class="cat-description" x-text="cat.description || 'Без опису'" x-show="cat.description"></div>
+                <div class="cat-actions">
+                    <button class="btn-edit" @click="editCat(cat)">Редагувати</button>
+                    <button class="btn-toggle" @click="toggleCat(cat)" x-text="cat.is_active ? 'Вимкнути' : 'Увімкнути'"></button>
+                    <button class="btn-delete" @click="deleteCat(cat._id)">Видалити</button>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <div class="empty-state" x-show="categories.length === 0">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
+        <h3>Немає категорій клієнтів</h3>
+        <p>Створіть першу категорію для сегментації клієнтів</p>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" x-show="showModal" x-transition.opacity @click.self="showModal = false" style="display: none;">
+        <div class="modal-content" @click.stop>
+            <div class="modal-header">
+                <h2 x-text="editing ? 'Редагувати категорію' : 'Нова категорія'"></h2>
+                <button class="modal-close" @click="showModal = false">&times;</button>
+            </div>
+
+            <form @submit.prevent="save()">
+                <div class="form-group">
+                    <label>Назва</label>
+                    <input type="text" x-model="form.name" required placeholder="напр. Постійні">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Знижка (%)</label>
+                        <input type="number" x-model="form.discount_percent" required min="0" max="100" step="1" placeholder="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Колір</label>
+                        <input type="color" x-model="form.color" style="height: 46px; padding: 4px;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Опис</label>
+                    <textarea x-model="form.description" rows="2" placeholder="Опис категорії..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-group">
+                        <div class="toggle-switch" :class="{ active: form.is_active }" @click="form.is_active = !form.is_active"></div>
+                        <span x-text="form.is_active ? 'Активна (знижка діє)' : 'Неактивна (знижка не діє)'"></span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" x-text="editing ? 'Зберегти зміни' : 'Створити категорію'"></button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function customerCategoriesApp() {
+    return {
+        categories: [],
+        showModal: false,
+        editing: null,
+        form: { name: '', discount_percent: 10, color: '#6366f1', description: '', is_active: true },
+
+        async load() {
+            try {
+                const resp = await fetch('/api/customer-categories');
+                const data = await resp.json();
+                this.categories = data.items || [];
+            } catch (e) { console.error('Error loading categories:', e); }
+        },
+
+        openModal(cat = null) {
+            if (cat) {
+                this.editing = cat;
+                this.form = { name: cat.name, discount_percent: cat.discount_percent, color: cat.color, description: cat.description || '', is_active: cat.is_active };
+            } else {
+                this.editing = null;
+                this.form = { name: '', discount_percent: 10, color: '#6366f1', description: '', is_active: true };
+            }
+            this.showModal = true;
+        },
+
+        editCat(cat) { this.openModal(cat); },
+
+        async save() {
+            try {
+                const data = {
+                    name: this.form.name,
+                    discount_percent: parseFloat(this.form.discount_percent),
+                    color: this.form.color,
+                    description: this.form.description,
+                    is_active: this.form.is_active
+                };
+                const url = this.editing ? `/api/customer-categories/${this.editing._id}` : '/api/customer-categories';
+                const method = this.editing ? 'PUT' : 'POST';
+                const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                if (!resp.ok) { const err = await resp.json(); alert(err.detail || 'Помилка'); return; }
+                this.showModal = false;
+                await this.load();
+            } catch (e) { console.error('Error saving:', e); alert('Помилка збереження'); }
+        },
+
+        async toggleCat(cat) {
+            try {
+                const data = { name: cat.name, discount_percent: cat.discount_percent, color: cat.color, description: cat.description || '', is_active: !cat.is_active };
+                await fetch(`/api/customer-categories/${cat._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                await this.load();
+            } catch (e) { console.error('Error toggling:', e); }
+        },
+
+        async deleteCat(id) {
+            if (!confirm('Видалити цю категорію? Вона буде прибрана у всіх клієнтів.')) return;
+            try { await fetch(`/api/customer-categories/${id}`, { method: 'DELETE' }); await this.load(); }
+            catch (e) { console.error('Error deleting:', e); }
+        }
+    };
+}
+</script>
+{% endblock %}

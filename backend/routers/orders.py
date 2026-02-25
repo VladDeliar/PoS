@@ -1,3 +1,4 @@
+import re
 import logging
 from datetime import datetime
 
@@ -8,6 +9,7 @@ from pymongo import ReturnDocument
 logger = logging.getLogger(__name__)
 
 from .. import database
+from ..dependencies import runtime_settings
 from ..models import OrderCreate
 from ..redis_manager import redis_manager
 from ..config import CHANNEL_ORDERS_NEW, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
@@ -64,6 +66,10 @@ async def create_order(data: OrderCreate):
     if not data.items:
         raise HTTPException(status_code=400, detail="Замовлення не містить товарів")
 
+    # Validate payment method
+    if data.payment_method not in ("cash", "card", "online"):
+        raise HTTPException(status_code=400, detail="Невірний спосіб оплати")
+
     for item in data.items:
         if item.qty <= 0:
             raise HTTPException(status_code=400, detail=f"Невірна кількість для товару: {item.name}")
@@ -89,7 +95,7 @@ async def create_order(data: OrderCreate):
                     if not product.get("available", True):
                         raise HTTPException(status_code=400, detail=f"Товар '{product.get('name', item.name)}' недоступний")
 
-    subtotal = sum(item.price * item.qty for item in data.items)
+    subtotal = round(sum(item.price * item.qty for item in data.items), 2)
     discount_amount = 0
     promo_code_used = None
 
@@ -155,7 +161,54 @@ async def create_order(data: OrderCreate):
                     {"$inc": {"usage_count": 1}}
                 )
 
-    total = subtotal - discount_amount + delivery_fee
+    # Customer category discount
+    customer_discount_amount = 0
+    customer_discount_label = None
+
+    if data.customer_phone and data.customer_discount_percent and data.customer_discount_percent > 0:
+        phone_normalized = re.sub(r'[\s\-\(\)]', '', data.customer_phone.strip())
+        if database.connected and database.customers is not None:
+            customer = database.customers.find_one({"phone": phone_normalized})
+            if customer and customer.get("category_ids"):
+                cat_ids = [ObjectId(cid) for cid in customer["category_ids"] if ObjectId.is_valid(cid)]
+                if cat_ids:
+                    cats = list(database.customer_categories.find({
+                        "_id": {"$in": cat_ids}, "is_active": True
+                    }))
+                    if cats:
+                        best_cat = max(cats, key=lambda c: c.get("discount_percent", 0))
+                        max_disc = best_cat.get("discount_percent", 0)
+                        if max_disc > 0:
+                            customer_discount_amount = round(subtotal * max_disc / 100, 2)
+                            customer_discount_label = f"Знижка для категорії '{best_cat['name']}': -{max_disc}%"
+
+    # Use the HIGHER discount (promo vs customer category), not both
+    if customer_discount_amount > 0 and discount_amount > 0:
+        if customer_discount_amount >= discount_amount:
+            # Customer discount wins — don't count promo
+            discount_amount = 0
+            promo_code_used = None
+        else:
+            # Promo wins — don't count customer discount
+            customer_discount_amount = 0
+            customer_discount_label = None
+
+    total_discount = discount_amount + customer_discount_amount
+
+    # Card surcharge calculation
+    card_surcharge_percent = 0
+    card_surcharge_amount = 0
+    if data.payment_method in ("card", "online"):
+        surcharge_settings = runtime_settings.get("card_surcharge", {})
+        if database.connected and database.settings is not None:
+            db_settings_doc = database.settings.find_one({"_id": "app_settings"})
+            if db_settings_doc and db_settings_doc.get("card_surcharge"):
+                surcharge_settings = db_settings_doc["card_surcharge"]
+        card_surcharge_percent = surcharge_settings.get("percent", 0)
+        if card_surcharge_percent > 0:
+            card_surcharge_amount = round(subtotal * card_surcharge_percent / 100, 2)
+
+    total = round(subtotal - total_discount + delivery_fee + card_surcharge_amount, 2)
 
     order_doc = {
         "order_number": generate_order_number(),
@@ -163,10 +216,15 @@ async def create_order(data: OrderCreate):
         "subtotal": subtotal,
         "discount_amount": discount_amount,
         "promo_code": promo_code_used,
+        "customer_discount_amount": customer_discount_amount,
+        "customer_discount_label": customer_discount_label,
         "delivery_fee": delivery_fee,
         "delivery_zone_id": data.delivery_zone_id,
         "delivery_zone_name": delivery_zone_name,
         "delivery_address": delivery_address,
+        "payment_method": data.payment_method,
+        "card_surcharge_percent": card_surcharge_percent,
+        "card_surcharge_amount": card_surcharge_amount,
         "total": total,
         "status": "new",
         "payment_status": "pending",
@@ -186,6 +244,37 @@ async def create_order(data: OrderCreate):
         result = database.orders.insert_one(order_doc)
         order_doc["_id"] = str(result.inserted_id)
         order_doc["created_at"] = order_doc["created_at"].isoformat()
+
+    # Auto-create/update customer record
+    if data.customer_phone and database.connected and database.customers is not None:
+        phone_norm = re.sub(r'[\s\-\(\)]', '', data.customer_phone.strip())
+        if phone_norm:
+            order_id_str = str(order_doc.get("_id", ""))
+            try:
+                existing_customer = database.customers.find_one({"phone": phone_norm})
+                if existing_customer:
+                    update_fields = {
+                        "$push": {"order_history": order_id_str},
+                        "$set": {"updated_at": datetime.utcnow()}
+                    }
+                    if data.customer_name and data.customer_name.strip():
+                        update_fields["$set"]["name"] = data.customer_name.strip()
+                    database.customers.update_one({"phone": phone_norm}, update_fields)
+                else:
+                    new_customer = {
+                        "name": (data.customer_name or "").strip(),
+                        "phone": phone_norm,
+                        "order_history": [order_id_str],
+                        "order_count": 0,
+                        "total_spent": 0.0,
+                        "category_ids": [],
+                        "notes": "",
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    }
+                    database.customers.insert_one(new_customer)
+            except Exception as e:
+                logger.error("Failed to auto-create/update customer: %s", e)
 
     try:
         await redis_manager.publish(CHANNEL_ORDERS_NEW, {
@@ -216,12 +305,34 @@ async def update_order_status(order_id: str, status: str):
                 order["status"] = status
                 break
     else:
+        order_doc = database.orders.find_one({"_id": ObjectId(order_id)})
+        if not order_doc:
+            raise HTTPException(status_code=404, detail="Order not found")
+
+        prev_status = order_doc.get("status")
+
         result = database.orders.update_one(
             {"_id": ObjectId(order_id)},
             {"$set": {"status": status}}
         )
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Order not found")
+
+        # Update customer stats only on first transition to "completed"
+        if status == "completed" and prev_status != "completed":
+            customer_phone = order_doc.get("customer_phone")
+            if customer_phone and database.customers is not None:
+                order_total = order_doc.get("total", 0)
+                try:
+                    database.customers.update_one(
+                        {"phone": customer_phone},
+                        {
+                            "$inc": {"order_count": 1, "total_spent": order_total},
+                            "$set": {"updated_at": datetime.utcnow()}
+                        }
+                    )
+                except Exception as e:
+                    logger.error("Failed to update customer stats on order completion: %s", e)
 
     try:
         await redis_manager.publish(CHANNEL_ORDERS_NEW, {

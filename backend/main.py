@@ -2,10 +2,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 import pymongo.errors
 
+from . import database
 from .database import connect_db, close_db
 from .redis_manager import redis_manager
 from .utils.data_fetchers import init_default_data
@@ -14,7 +15,9 @@ from .routers import (
     pages, admin_pages, categories, products, orders,
     menu_items, combos, modifiers, settings,
     promo_codes, feedbacks, stats, websocket,
-    delivery_zones
+    delivery_zones, branches,
+    customers, customer_categories,
+    site_pages, projects
 )
 
 
@@ -34,6 +37,20 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="POS", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def branch_setup_check(request: Request, call_next):
+    """Redirect all admin pages to branch setup if no branches exist yet."""
+    path = request.url.path
+    if (path.startswith("/admin")
+            and not path.startswith("/admin/branches")
+            and database.connected):
+        count = database.branches.count_documents({})
+        if count == 0:
+            return RedirectResponse(url="/admin/branches?onboarding=1", status_code=302)
+    return await call_next(request)
+
 
 # Static files - шлях до frontend/static
 BASE_DIR = Path(__file__).parent.parent  # Повертаємось до кореня проекту
@@ -72,6 +89,11 @@ app.include_router(feedbacks.router)
 app.include_router(stats.router)
 app.include_router(websocket.router)
 app.include_router(delivery_zones.router)
+app.include_router(branches.router)
+app.include_router(customers.router)
+app.include_router(customer_categories.router)
+app.include_router(site_pages.router)
+app.include_router(projects.router)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,710 @@
+/* ================================================================
+   Site Pages — Admin UI styles
+   Reuses: .settings-card, .form-group, .btn-save, .btn-add,
+           .btn-danger, .toast, .drag-handle from style.css/admin.css
+   ================================================================ */
+
+/* ── Page header ──────────────────────────────────────────────── */
+.sp-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.sp-page-header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+/* ── Empty state ──────────────────────────────────────────────── */
+.sp-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--color-text-muted);
+}
+
+.sp-empty svg {
+    width: 64px;
+    height: 64px;
+    opacity: 0.3;
+    margin-bottom: 16px;
+}
+
+.sp-empty p {
+    font-size: 1rem;
+    margin-bottom: 20px;
+}
+
+/* ── Pages list ───────────────────────────────────────────────── */
+.pages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.page-card {
+    background: var(--color-bg-card);
+    border: 2px solid var(--color-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.page-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.page-card .drag-handle {
+    cursor: grab;
+    color: var(--color-text-muted);
+    font-size: 1.3rem;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.page-card .drag-handle:active {
+    cursor: grabbing;
+}
+
+.page-card.sortable-ghost {
+    opacity: 0.4;
+    background: var(--color-primary-light, #e8f5e9);
+}
+
+.page-card.sortable-chosen {
+    box-shadow: var(--shadow-lg);
+}
+
+.page-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.page-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.page-card-meta {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.page-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Published toggle chip */
+.published-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.published-chip.on {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.published-chip.off {
+    background: #ffebee;
+    color: #c62828;
+}
+
+/* ── Edit layout ──────────────────────────────────────────────── */
+.sp-edit-layout {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.sp-form-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sp-preview-col {
+    position: sticky;
+    top: 80px;
+}
+
+.sp-action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0 4px;
+    margin-top: 4px;
+    border-top: 2px solid var(--color-border);
+    gap: 12px;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-back:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* ── Character counter ────────────────────────────────────────── */
+.char-count {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-weight: 400;
+    float: right;
+}
+
+/* ── Radio group ──────────────────────────────────────────────── */
+.radio-group {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 400;
+    font-size: 0.9rem;
+}
+
+.radio-group input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+}
+
+/* ── Tag chips ────────────────────────────────────────────────── */
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: var(--color-primary-light, #e8f5e9);
+    color: var(--color-primary, #4CAF50);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.tag-chip button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    padding: 0;
+    line-height: 1;
+    font-size: 1rem;
+    opacity: 0.7;
+}
+
+.tag-chip button:hover {
+    opacity: 1;
+}
+
+.tag-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.tag-input-row input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+}
+
+.tag-input-row input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.btn-add-tag {
+    padding: 8px 14px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.btn-add-tag:hover {
+    background: var(--color-primary-hover, #45a049);
+}
+
+/* ── Upload zone ──────────────────────────────────────────────── */
+.upload-zone {
+    border: 2px dashed var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.upload-zone:hover,
+.upload-zone.dragging {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light, rgba(76, 175, 80, 0.05));
+}
+
+.upload-zone .cover-preview {
+    max-height: 200px;
+    max-width: 100%;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.upload-placeholder {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    pointer-events: none;
+}
+
+.upload-placeholder svg {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.upload-placeholder p {
+    margin: 0 0 4px;
+}
+
+.upload-cover-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.55);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 1;
+}
+
+.upload-cover-remove:hover {
+    background: #f44336;
+}
+
+.form-hint {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    margin-top: 6px;
+}
+
+/* ── Sections accordion ───────────────────────────────────────── */
+.sections-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.section-row {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+
+.section-row.sortable-chosen {
+    box-shadow: var(--shadow-md);
+}
+
+.section-row.sortable-ghost {
+    opacity: 0.4;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.section-header:hover {
+    background: var(--color-bg-hover, rgba(0,0,0,0.03));
+}
+
+.section-header .drag-handle {
+    cursor: grab;
+    color: var(--color-text-muted);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.section-header-title {
+    flex: 1;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--color-text);
+}
+
+.section-chevron {
+    color: var(--color-text-muted);
+    transition: transform 0.2s;
+    font-size: 0.7rem;
+}
+
+.section-chevron.open {
+    transform: rotate(180deg);
+}
+
+.section-body {
+    padding: 0 16px 16px;
+    border-top: 1px solid var(--color-border);
+}
+
+/* ── Section image thumbnails ─────────────────────────────────── */
+.section-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+    align-items: flex-start;
+}
+
+.img-thumb {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.img-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.btn-remove-img {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    padding: 0;
+    line-height: 1;
+}
+
+.btn-remove-img:hover {
+    background: #f44336;
+}
+
+.btn-add-img {
+    padding: 6px 14px;
+    height: 80px;
+    border: 2px dashed var(--color-border);
+    border-radius: 8px;
+    background: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 80px;
+}
+
+.btn-add-img:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* ── Danger small button ──────────────────────────────────────── */
+.btn-danger-sm {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #ffebee;
+    color: #f44336;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-danger-sm:hover {
+    background: #f44336;
+    color: white;
+}
+
+/* ── Preview panel ────────────────────────────────────────────── */
+.preview-frame {
+    background: var(--color-bg-card);
+    border: 2px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.preview-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 16px;
+}
+
+.preview-cover {
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.preview-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+.preview-description {
+    font-size: 0.88rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.preview-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.preview-cat-chip {
+    padding: 2px 10px;
+    background: var(--color-primary-light, #e8f5e9);
+    color: var(--color-primary, #4CAF50);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.preview-section {
+    border-top: 1px solid var(--color-border);
+    padding-top: 12px;
+    margin-top: 12px;
+}
+
+.preview-section-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+    color: var(--color-text);
+}
+
+.preview-section-text {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.preview-section-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.preview-section-images img {
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+}
+
+.preview-empty {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 20px 0;
+}
+
+/* ── Delete modal ─────────────────────────────────────────────── */
+.sp-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sp-modal {
+    background: var(--color-bg-card);
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: var(--shadow-xl);
+}
+
+.sp-modal h3 {
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.sp-modal p {
+    color: var(--color-text-secondary);
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.sp-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+/* ── Publish toggle checkbox ──────────────────────────────────── */
+.publish-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0 0;
+}
+
+.publish-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.publish-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-primary);
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+    .sp-edit-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sp-preview-col {
+        position: static;
+        order: -1;
+    }
+}
+
+@media (max-width: 600px) {
+    .sp-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page-card {
+        flex-wrap: wrap;
+    }
+}

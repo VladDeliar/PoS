@@ -2,126 +2,378 @@
 
 {% block page_title %}Асортимент{% endblock %}
 
-{% block content %}
-<div x-data="assortmentApp()" x-init="init()">
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" x-show="loading" x-transition>
-        <div class="spinner"></div>
-        <span>Завантаження...</span>
-    </div>
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/dishes.css">
+{% endblock %}
 
-    <!-- Header -->
-    <div class="page-header">
-        <!-- Search -->
-        <div class="search-container">
-            <input type="text" class="form-input search-input" x-model="searchQuery"
-                   @input.debounce.300ms="searchProducts()"
-                   @keydown.escape="searchQuery = ''; searchResults = []"
+{% block content %}
+<div class="admin-content dishes-page" x-data="assortmentApp()" x-init="init()">
+
+    <!-- Green Header Bar -->
+    <div class="dishes-header">
+        <!-- Left: Title / Select-mode batch controls -->
+        <div class="header-tabs">
+            <template x-if="!selectMode || selectedProducts.length === 0">
+                <span style="color: white; font-weight: 600; font-size: 1rem; white-space: nowrap;">Асортимент</span>
+            </template>
+            <template x-if="selectMode && selectedProducts.length > 0">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span style="color: rgba(255,255,255,0.9); font-size: 0.875rem;" x-text="'Обрано: ' + selectedProducts.length"></span>
+                    <button class="action-button" @click="batchAddToMenu()">
+                        <svg viewBox="0 0 24 24"><path d="M12,3L1,9L12,15L21,10.09V17H23V9M5,13.18V17.18L12,21L19,17.18V13.18L12,17L5,13.18Z"/></svg>
+                        В меню
+                    </button>
+                    <button class="action-button" @click="batchDelete()" style="background: rgba(231,76,60,0.7);">
+                        <svg viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+                        Видалити
+                    </button>
+                </div>
+            </template>
+        </div>
+
+        <!-- Center: Search -->
+        <div class="header-search" style="position: relative;">
+            <svg class="search-icon" viewBox="0 0 24 24">
+                <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+            </svg>
+            <input type="text"
+                   x-model="searchQuery"
+                   @input.debounce.300ms="applyFilters()"
+                   @keydown.escape="searchQuery = ''; searchResults = []; applyFilters()"
                    @keydown.arrow-down.prevent="navigateSearch(1)"
                    @keydown.arrow-up.prevent="navigateSearch(-1)"
                    @keydown.enter.prevent="selectSearchResult()"
-                   placeholder="Пошук страв... (до 20 результатів)">
-            <div class="search-dropdown" x-show="searchResults.length > 0" @click.away="searchResults = []">
+                   placeholder="Пошук страв...">
+
+            <!-- Search dropdown -->
+            <div class="search-jump-dropdown" x-show="searchResults.length > 0" @click.away="searchResults = []">
                 <template x-for="(product, idx) in searchResults" :key="product._id">
-                    <div class="search-result-item" :class="{ 'active': idx === selectedSearchIndex }"
+                    <div class="search-jump-item"
+                         :class="{ active: idx === selectedSearchIndex }"
                          @click="scrollToProduct(product._id)"
                          @mouseenter="selectedSearchIndex = idx">
                         <img :src="product.image" :alt="product.name" onerror="this.src='/static/img/placeholder.png'">
-                        <div class="search-result-info">
-                            <span class="name" x-text="product.name"></span>
-                            <span class="category" x-text="getCategoryName(product.category_id)"></span>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 500; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" x-text="product.name"></div>
+                            <div style="font-size: 0.75rem; opacity: 0.7;" x-text="getCategoryName(product.category_id)"></div>
                         </div>
-                        <span class="price" x-text="product.price + ' грн'"></span>
+                        <span style="font-weight: 600; font-size: 0.875rem;" x-text="product.price + ' грн'"></span>
                     </div>
                 </template>
             </div>
         </div>
 
+        <!-- Right: Actions -->
         <div class="header-actions">
             <!-- Select Mode Toggle -->
-            <button class="btn" :class="selectMode ? 'btn-secondary' : 'btn-outline'"
-                    @click="toggleSelectMode()">
-                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,5V19H5V5H19M10,17L6,13L7.41,11.58L10,14.17L16.59,7.58L18,9"/></svg>
-                <span x-text="selectMode ? 'Скасувати вибір' : 'Вибрати кілька'"></span>
+            <button class="action-button" @click="toggleSelectMode()"
+                    :style="selectMode ? 'background: rgba(255,255,255,0.4);' : ''">
+                <svg viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M10,17L6,13L7.41,11.58L10,14.17L16.59,7.58L18,9"/></svg>
+                <span x-text="selectMode ? 'Скасувати' : 'Вибрати'"></span>
             </button>
 
-            <!-- Batch Actions (visible when items selected) -->
-            <template x-if="selectMode && selectedProducts.length > 0">
-                <div class="batch-actions">
-                    <span class="selected-count" x-text="'Обрано: ' + selectedProducts.length"></span>
-                    <button class="btn btn-success" @click="batchAddToMenu()">
-                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12,3L1,9L12,15L21,10.09V17H23V9"/></svg>
-                        В меню
-                    </button>
-                    <button class="btn btn-danger" @click="batchDelete()">
-                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
-                        Видалити
-                    </button>
-                </div>
-            </template>
+            <!-- Notification Bell -->
+            <button class="icon-button" title="Замовлення" @click="window.location.href='/admin/orders'">
+                <svg viewBox="0 0 24 24">
+                    <path d="M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M14,21A2,2 0 0,1 12,23A2,2 0 0,1 10,21"/>
+                </svg>
+            </button>
 
-            <button class="btn btn-primary" @click="window.location.href='/admin/dishes/create'">
-                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
-                Додати страву
+            <!-- 3-dots Overflow Menu -->
+            <div style="position: relative;">
+                <button class="icon-button" @click="showOverflowMenu = !showOverflowMenu">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z"/>
+                    </svg>
+                </button>
+                <div class="overflow-menu" :class="{ show: showOverflowMenu }" @click.away="showOverflowMenu = false">
+                    <div class="overflow-menu-item" @click="refreshData()">
+                        <svg viewBox="0 0 24 24"><path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
+                        <span>Оновити</span>
+                    </div>
+                    <div class="overflow-menu-item" @click="window.location.href='/admin/categories'; showOverflowMenu = false">
+                        <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20Z"/></svg>
+                        <span>Категорії</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Project -->
+            <button class="action-button" @click="openProjectModal()">
+                <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                <span>Проєкт</span>
+            </button>
+
+            <!-- Add Category -->
+            <button class="action-button" @click="openCategoryModal()">
+                <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                <span>Категорія</span>
+            </button>
+
+            <!-- Add Dish (Primary) -->
+            <button class="action-button primary" @click="window.location.href='/admin/dishes/create' + (selectedCategory ? '?category_id=' + selectedCategory + (selectedProject ? '&project_id=' + selectedProject : '') : (selectedProject ? '?project_id=' + selectedProject : ''))">
+                <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                <span>Страву</span>
             </button>
         </div>
     </div>
 
-    <!-- Products Grid -->
-    <div class="products-grid">
-        <template x-for="product in filteredProducts" :key="product._id">
-            <div class="product-admin-card" :id="'product-' + product._id"
-                 :class="{ 'selected': selectedProducts.includes(product._id) }">
-                <!-- Select Checkbox -->
-                <div class="select-checkbox" x-show="selectMode" @click.stop="toggleProductSelection(product._id)">
-                    <input type="checkbox" :checked="selectedProducts.includes(product._id)">
-                </div>
-                <div class="product-image" @click="selectMode ? toggleProductSelection(product._id) : null">
-                    <img :src="product.image" :alt="product.name" onerror="this.src='/static/img/placeholder.png'">
-                    <span class="availability-badge" :class="product.available ? 'available' : 'unavailable'" x-text="product.available ? 'В наявності' : 'Немає'"></span>
-                    <span class="menu-badge" x-show="isInMenu(product._id)" title="Додано в меню">
-                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
-                    </span>
-                    <!-- Weight Badge -->
-                    <span class="weight-badge" x-show="product.weight" x-text="product.weight"></span>
-                </div>
-                <div class="product-details">
-                    <h3 x-text="product.name"></h3>
-                    <p class="category" x-text="getCategoryName(product.category_id)"></p>
-                    <p class="price" x-text="product.price + ' грн'"></p>
-                    <p class="modifiers-count" x-show="product.modifier_groups && product.modifier_groups.length > 0">
-                        <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M3,17V19H9V17H3M3,5V7H13V5H3M13,21V19H21V17H13V15H11V21H13M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z"/></svg>
-                        <span x-text="product.modifier_groups.length + ' модиф.'"></span>
-                    </p>
-                </div>
-                <div class="product-actions" x-show="!selectMode">
-                    <button class="btn-icon" :class="isInMenu(product._id) ? 'success' : ''"
-                            @click="toggleMenu(product)"
-                            :title="isInMenu(product._id) ? 'Прибрати з меню' : 'Додати в меню'">
-                        <svg x-show="!isInMenu(product._id)" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12,3L1,9L12,15L21,10.09V17H23V9M5,13.18V17.18L12,21L19,17.18V13.18L12,17L5,13.18Z"/></svg>
-                        <svg x-show="isInMenu(product._id)" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
+    <!-- Content -->
+    <div class="dishes-content">
+
+        <!-- Loading -->
+        <div x-show="loading" style="text-align: center; padding: 60px 20px;">
+            <div style="width: 40px; height: 40px; border: 4px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+            <p style="color: var(--color-text-secondary);">Завантаження...</p>
+        </div>
+
+        <div x-show="!loading">
+            <!-- Project Filter Pills -->
+            <div class="category-filters" style="flex-wrap: wrap; padding-bottom: 4px; border-bottom: 1px solid var(--color-border); margin-bottom: 6px;" x-show="projects.length > 0">
+                <button class="category-pill"
+                        :class="{ active: selectedProject === null }"
+                        @click="selectedProject = null; selectedCategory = null; applyFilters()">
+                    Всі
+                </button>
+                <template x-for="proj in projects" :key="proj._id">
+                    <button class="category-pill"
+                            :class="{ active: selectedProject === proj._id }"
+                            @click="selectedProject = proj._id; selectedCategory = null; applyFilters()"
+                            style="display: inline-flex; align-items: center; gap: 2px;">
+                        <span x-text="proj.name"></span>
+                        <span class="pill-edit-icon" @click.stop="openEditProjectModal(proj)" title="Редагувати">
+                            <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>
+                        </span>
                     </button>
-                    <button class="btn-icon" @click="copyProduct(product)" title="Копіювати">
-                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
+                </template>
+            </div>
+
+            <!-- Category Filter Pills -->
+            <div class="category-filters" style="flex-wrap: wrap; padding-bottom: 6px;">
+                <button class="category-pill"
+                        :class="{ active: selectedCategory === null }"
+                        @click="selectedCategory = null; applyFilters()">
+                    Всі
+                </button>
+                <template x-for="cat in visibleCategories" :key="cat._id">
+                    <button class="category-pill"
+                            :class="{ active: selectedCategory === cat._id }"
+                            @click="selectedCategory = cat._id; applyFilters()"
+                            style="display: inline-flex; align-items: center; gap: 2px;">
+                        <span x-text="cat.name"></span>
+                        <span class="pill-edit-icon" @click.stop="openEditCategoryModal(cat)" title="Редагувати">
+                            <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>
+                        </span>
+                        <span class="pill-edit-icon" @click.stop="window.location.href='/admin/dishes/create?category_id=' + cat._id + (cat.project_id ? '&project_id=' + cat.project_id : '')" title="Додати страву">
+                            <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                        </span>
                     </button>
-                    <button class="btn-icon" @click="window.location.href='/admin/dishes/edit/' + product._id" title="Редагувати">
-                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>
-                    </button>
-                    <button class="btn-icon danger" @click="deleteProduct(product._id)" title="Видалити">
-                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+                </template>
+            </div>
+
+            <!-- Products Table -->
+            <div class="dishes-table-container">
+                <table class="dishes-table" x-show="filteredItems.length > 0">
+                    <thead>
+                        <tr>
+                            <th x-show="selectMode" style="width: 36px;"></th>
+                            <th style="width: 64px;">В меню</th>
+                            <th>Назва страви</th>
+                            <th style="width: 90px;">Вага</th>
+                            <th style="width: 110px;">Час пригот.</th>
+                            <th style="width: 120px;">Деталі</th>
+                            <th style="width: 96px;">POS ID</th>
+                            <th style="width: 88px; text-align: right;">Ціна</th>
+                            <th style="width: 130px; text-align: center;">Наявність</th>
+                            <th style="width: 76px; text-align: center;">Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="product in paginatedItems" :key="product._id">
+                            <tr :id="'product-' + product._id"
+                                :class="{ 'selected-row': selectedProducts.includes(product._id) }"
+                                @click="selectMode ? toggleProductSelection(product._id) : null"
+                                :style="selectMode ? 'cursor: pointer;' : ''">
+
+                                <!-- Checkbox (select mode) -->
+                                <td x-show="selectMode">
+                                    <input type="checkbox"
+                                           :checked="selectedProducts.includes(product._id)"
+                                           @click.stop="toggleProductSelection(product._id)"
+                                           style="width: 16px; height: 16px; cursor: pointer;">
+                                </td>
+
+                                <!-- Status Toggle: В меню -->
+                                <td>
+                                    <div class="status-toggle"
+                                         :class="{ on: isInMenu(product._id) }"
+                                         @click.stop="toggleMenu(product)"
+                                         :title="isInMenu(product._id) ? 'Прибрати з меню' : 'Додати в меню'">
+                                    </div>
+                                </td>
+
+                                <!-- Назва страви: фото + назва + опис + категорія + теги + алкоголь -->
+                                <td>
+                                    <div class="dish-info">
+                                        <img :src="product.image || '/static/img/placeholder.svg'"
+                                             :alt="product.name"
+                                             class="dish-thumb"
+                                             onerror="this.src='/static/img/placeholder.svg'"
+                                             @click.stop="window.location.href='/admin/dishes/edit/' + product._id"
+                                             style="cursor: pointer; width: 48px; height: 48px;">
+                                        <div class="dish-details" style="gap: 2px;">
+                                            <!-- Рядок 1: назва + алкоголь -->
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <span class="dish-name"
+                                                      x-text="product.name"
+                                                      @click.stop="window.location.href='/admin/dishes/edit/' + product._id"
+                                                      style="cursor: pointer;"></span>
+                                                <span x-show="product.is_alcohol"
+                                                      class="info-badge alcohol"
+                                                      title="Містить алкоголь">🍺</span>
+                                            </div>
+                                            <!-- Рядок 2: категорія -->
+                                            <span class="dish-category" x-text="getCategoryName(product.category_id)"></span>
+                                            <!-- Рядок 3: опис (truncated) -->
+                                            <span x-show="product.description"
+                                                  class="dish-description"
+                                                  x-text="product.description && product.description.length > 70 ? product.description.substring(0, 70) + '…' : product.description"
+                                                  :title="product.description"></span>
+                                            <!-- Рядок 4: теги -->
+                                            <div x-show="product.tags && product.tags.length > 0"
+                                                 style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px;">
+                                                <template x-for="tagId in (product.tags || []).slice(0, 4)" :key="tagId">
+                                                    <span class="tag-chip"
+                                                          :style="getTagColor(tagId)"
+                                                          x-text="getTagName(tagId)"
+                                                          x-show="getTagName(tagId)"></span>
+                                                </template>
+                                                <span x-show="product.tags && product.tags.length > 4"
+                                                      class="tag-chip tag-chip-more"
+                                                      x-text="'+' + (product.tags.length - 4)"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Вага -->
+                                <td>
+                                    <span x-show="product.weight" class="detail-value" x-text="product.weight"></span>
+                                    <span x-show="!product.weight" class="detail-empty">—</span>
+                                </td>
+
+                                <!-- Час приготування -->
+                                <td>
+                                    <span x-show="product.cook_time" class="detail-value" x-text="product.cook_time"></span>
+                                    <span x-show="!product.cook_time" class="detail-empty">—</span>
+                                </td>
+
+                                <!-- Деталі: модифікатори + норма -->
+                                <td>
+                                    <div class="details-cell">
+                                        <div x-show="product.modifier_groups && product.modifier_groups.length > 0" class="detail-row">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" style="fill: var(--color-primary); flex-shrink: 0;"><path d="M3,17V19H9V17H3M3,5V7H13V5H3M13,21V19H21V17H13V15H11V21H13M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z"/></svg>
+                                            <span style="color: var(--color-primary);" x-text="product.modifier_groups.length + ' доп.'"></span>
+                                        </div>
+                                        <div x-show="product.daily_production_norm" class="detail-row">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" style="fill: var(--color-text-secondary); flex-shrink: 0;"><path d="M19,3H5C3.9,3 3,3.9 3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V5C21,3.9 20.1,3 19,3M9,17H7V10H9V17M13,17H11V7H13V17M17,17H15V13H17V17Z"/></svg>
+                                            <span x-text="'норма: ' + product.daily_production_norm"></span>
+                                        </div>
+                                        <span x-show="!(product.modifier_groups && product.modifier_groups.length) && !product.daily_production_norm"
+                                              class="detail-empty">—</span>
+                                    </div>
+                                </td>
+
+                                <!-- POS ID -->
+                                <td>
+                                    <code class="pos-id" x-text="product._id ? product._id.substring(0, 8) : ''"></code>
+                                </td>
+
+                                <!-- Price -->
+                                <td style="text-align: right;">
+                                    <span class="price" x-text="product.price ? product.price.toFixed(2) + ' грн' : '—'"></span>
+                                </td>
+
+                                <!-- Availability Dropdown -->
+                                <td style="text-align: center;">
+                                    <select class="availability-dropdown"
+                                            :class="{ available: product.available, 'out-of-stock': !product.available }"
+                                            :value="product.available ? 'available' : 'out-of-stock'"
+                                            @change.stop="updateAvailability(product, $event.target.value)">
+                                        <option value="available">✓ В наявності</option>
+                                        <option value="out-of-stock">✗ Немає</option>
+                                    </select>
+                                </td>
+
+                                <!-- Actions: edit + delete -->
+                                <td style="text-align: center;">
+                                    <div style="display: flex; gap: 4px; justify-content: center;">
+                                        <button class="action-icon"
+                                                @click.stop="window.location.href='/admin/dishes/edit/' + product._id"
+                                                title="Редагувати">
+                                            <svg viewBox="0 0 24 24">
+                                                <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                                            </svg>
+                                        </button>
+                                        <button class="action-icon delete"
+                                                @click.stop="deleteProduct(product._id)"
+                                                title="Видалити">
+                                            <svg viewBox="0 0 24 24">
+                                                <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+
+                <!-- Empty State -->
+                <div class="empty-state" x-show="filteredItems.length === 0">
+                    <svg class="empty-icon" viewBox="0 0 24 24">
+                        <path d="M19,19H5V5H19M19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3M13.96,12.29L11.21,15.83L9.25,13.47L6.5,17H17.5L13.96,12.29Z"/>
+                    </svg>
+                    <h3>Асортимент порожній</h3>
+                    <p x-show="searchQuery || selectedCategory">Спробуйте змінити пошук або категорію</p>
+                    <p x-show="!searchQuery && !selectedCategory">Додайте першу страву в каталог</p>
+                    <button class="btn btn-primary" @click="window.location.href='/admin/dishes/create' + (selectedCategory ? '?category_id=' + selectedCategory : '')">
+                        Додати страву
                     </button>
                 </div>
             </div>
-        </template>
+
+            <!-- Pagination Footer -->
+            <div class="pagination-footer" x-show="filteredItems.length > 0">
+                <div class="items-per-page">
+                    <span>Рядків:</span>
+                    <select x-model="itemsPerPage" @change="currentPage = 1">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+
+                <div class="pagination-info">
+                    <span x-text="`${startItem}–${endItem} з ${totalItems}`"></span>
+                </div>
+
+                <div class="pagination-controls">
+                    <button @click="previousPage()" :disabled="currentPage === 1" class="page-button">Назад</button>
+                    <template x-for="page in visiblePages" :key="page">
+                        <button class="page-number"
+                                :class="{ active: currentPage === page, ellipsis: page === '...' }"
+                                @click="page !== '...' ? (currentPage = page) : null"
+                                x-text="page"></button>
+                    </template>
+                    <button @click="nextPage()" :disabled="currentPage === totalPages" class="page-button">Далі</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Empty State -->
-    <div class="empty-state" x-show="products.length === 0">
-        <h3>Асортимент порожній</h3>
-        <p>Створіть першу страву в каталозі</p>
-    </div>
-
-    <!-- Product Modal -->
+    <!-- Product Modal (quick create) -->
     <div class="modal" x-show="showModal" x-transition @click.self="showModal = false">
         <div class="modal-content modal-form">
             <div class="modal-header">
@@ -166,7 +418,7 @@
                         <div class="form-group">
                             <label class="form-label">Денна норма виробництва</label>
                             <input type="number" class="form-input" x-model="form.daily_production_norm" placeholder="30" min="0">
-                            <small style="color: var(--color-text-muted);">Залиште порожнім якщо не потрібно відстежувати</small>
+                            <small style="color: var(--color-text-secondary);">Залиште порожнім якщо не потрібно відстежувати</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">URL зображення</label>
@@ -226,240 +478,249 @@
             </form>
         </div>
     </div>
+
+    <!-- Project Modal -->
+    <div class="modal" x-show="showProjectModal" x-transition @click.self="showProjectModal = false">
+        <div class="modal-content modal-form">
+            <div class="modal-header">
+                <h3 x-text="editingProject ? 'Редагувати проєкт' : 'Новий проєкт'"></h3>
+                <button @click="showProjectModal = false">&times;</button>
+            </div>
+            <form @submit.prevent="saveProject()">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Назва</label>
+                        <input type="text" class="form-input" x-model="projectForm.name" required placeholder="Наприклад: Кавʼярня">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Порядок сортування</label>
+                        <input type="number" class="form-input" x-model="projectForm.sort_order">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button x-show="editingProject" type="button" class="btn btn-danger" @click="deleteProjectFromModal()">Видалити</button>
+                    <button type="button" class="btn btn-outline" @click="showProjectModal = false">Скасувати</button>
+                    <button type="submit" class="btn btn-primary" x-text="editingProject ? 'Зберегти' : 'Додати'"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div class="modal" x-show="showCategoryModal" x-transition @click.self="showCategoryModal = false">
+        <div class="modal-content modal-form">
+            <div class="modal-header">
+                <h3 x-text="editingCategory ? 'Редагувати категорію' : 'Нова категорія'"></h3>
+                <button @click="showCategoryModal = false">&times;</button>
+            </div>
+            <form @submit.prevent="saveCategory()">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Назва</label>
+                        <input type="text" class="form-input" x-model="categoryForm.name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Іконка</label>
+                        <select class="form-select" x-model="categoryForm.icon">
+                            <option value="star">Зірка</option>
+                            <option value="coffee">Кава</option>
+                            <option value="cup">Напій</option>
+                            <option value="sun">Сніданок</option>
+                            <option value="sandwich">Сендвіч</option>
+                            <option value="leaf">Салат</option>
+                            <option value="bowl">Паста</option>
+                            <option value="burger">Бургер</option>
+                            <option value="pizza">Піца</option>
+                            <option value="cake">Десерт</option>
+                            <option value="tag">Тег</option>
+                        </select>
+                    </div>
+                    <div class="form-group" x-show="projects.length > 0">
+                        <label class="form-label">Проєкт</label>
+                        <select class="form-select" x-model="categoryForm.project_id">
+                            <option value="">— без проєкту —</option>
+                            <template x-for="proj in projects" :key="proj._id">
+                                <option :value="proj._id" x-text="proj.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Порядок сортування</label>
+                        <input type="number" class="form-input" x-model="categoryForm.sort_order">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button x-show="editingCategory" type="button" class="btn btn-danger" @click="deleteCategoryFromModal()">Видалити</button>
+                    <button type="button" class="btn btn-outline" @click="showCategoryModal = false">Скасувати</button>
+                    <button type="submit" class="btn btn-primary" x-text="editingCategory ? 'Зберегти' : 'Додати'"></button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <style>
-/* Loading Overlay */
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    z-index: 9999;
-    color: white;
-    font-size: 1.1rem;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
 
-/* Search */
-.search-container {
-    position: relative;
-    flex: 1;
-    max-width: 400px;
+/* Pencil edit icon on pills */
+.pill-edit-icon {
+    opacity: 0;
+    transition: opacity 0.15s;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 2px;
+    padding: 1px 2px;
+    border-radius: 3px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: inherit;
+    line-height: 1;
+}
+.category-pill:hover .pill-edit-icon { opacity: 0.65; }
+.pill-edit-icon:hover { opacity: 1 !important; background: rgba(0,0,0,0.08); }
+
+/* Selected row in select mode */
+.dishes-table tbody tr.selected-row {
+    background: var(--color-primary-light) !important;
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
 }
 
-.search-input {
-    width: 100%;
-    padding-left: 40px !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23999' d='M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: 12px center;
-}
-
-.search-dropdown {
+/* Search dropdown inside header */
+.search-jump-dropdown {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 6px);
     left: 0;
     right: 0;
     background: var(--color-bg-card);
     border: 1px solid var(--color-border);
     border-radius: 8px;
-    max-height: 400px;
+    max-height: 320px;
     overflow-y: auto;
-    z-index: 100;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    margin-top: 4px;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
 }
 
-.search-result-item {
+.search-jump-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 15px;
+    gap: 10px;
+    padding: 10px 14px;
     cursor: pointer;
     border-bottom: 1px solid var(--color-border);
-    transition: background 0.2s;
-}
-
-.search-result-item:last-child {
-    border-bottom: none;
-}
-
-.search-result-item:hover,
-.search-result-item.active {
-    background: var(--color-primary-light);
-}
-
-.search-result-item img {
-    width: 40px;
-    height: 40px;
-    border-radius: 6px;
-    object-fit: cover;
-}
-
-.search-result-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.search-result-info .name {
-    font-weight: 500;
+    transition: background 0.15s;
     color: var(--color-text-primary);
 }
 
-.search-result-info .category {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
+.search-jump-item:last-child { border-bottom: none; }
+
+.search-jump-item:hover,
+.search-jump-item.active {
+    background: var(--color-primary-light);
 }
 
-.search-result-item .price {
+.search-jump-item img {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+/* Price column style */
+.dishes-table .price {
     font-weight: 600;
     color: var(--color-primary);
+    font-size: 0.9rem;
 }
 
-/* Header Actions */
-.page-header {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 20px;
-}
-
-.header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    margin-left: auto;
-}
-
-.batch-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    padding: 8px 15px;
-    background: var(--color-primary-light);
-    border-radius: 8px;
-}
-
-.selected-count {
-    font-weight: 500;
-    color: var(--color-primary);
-}
-
-/* Select Mode */
-.select-checkbox {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 10;
-    width: 24px;
-    height: 24px;
-    background: white;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.select-checkbox input {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-}
-
-.product-admin-card {
-    position: relative;
-    transition: all 0.2s;
-}
-
-.product-admin-card.selected {
-    outline: 3px solid var(--color-primary);
-    transform: scale(0.98);
-}
-
-/* Weight Badge */
-.weight-badge {
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 10px;
+/* Dish description (truncated) */
+.dish-description {
+    display: block;
     font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    line-height: 1.3;
+    margin-top: 1px;
 }
 
-/* Existing Styles */
-.menu-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: var(--success);
-    color: white;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
+/* Alcohol badge */
+.info-badge.alcohol {
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: default;
+}
+
+/* Tag chips */
+.tag-chip {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.5;
 }
 
-.modifiers-count {
+.tag-chip-more {
+    background: var(--color-bg-body) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid var(--color-border);
+}
+
+/* Вага / Час — окремі колонки */
+.detail-value {
+    font-size: 0.85rem;
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+.detail-empty {
+    color: var(--color-text-secondary);
+    font-size: 0.82rem;
+}
+
+/* Деталі column */
+.details-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.detail-row {
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-top: 4px;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
 }
+
+/* Tag and modifier styles (for modal) */
+.tag-checkbox {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.tag-checkbox:hover { opacity: 0.8; }
 
 .modifiers-select {
     display: flex;
     flex-direction: column;
     gap: 8px;
     padding: 12px;
-    background: var(--bg-secondary);
+    background: var(--color-bg-body);
     border-radius: 8px;
     max-height: 150px;
     overflow-y: auto;
-}
-
-.tag-checkbox {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 12px;
-    border: 2px solid var(--border-color);
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: all 0.2s;
-}
-
-.tag-checkbox:hover {
-    opacity: 0.8;
 }
 
 .modifier-item {
@@ -467,37 +728,15 @@
     align-items: center;
     gap: 8px;
 }
+.modifier-item small { color: var(--color-text-secondary); }
 
-.modifier-item small {
-    color: var(--text-secondary);
-}
-
-.btn-icon.success {
-    color: var(--success);
-}
-
-/* Highlight animation for search */
-.product-admin-card.highlight {
-    animation: highlightPulse 2s ease-out;
-}
-
+/* Highlight animation for jump-to */
 @keyframes highlightPulse {
     0% { box-shadow: 0 0 0 4px var(--color-primary); }
     100% { box-shadow: none; }
 }
-
-@media (max-width: 768px) {
-    .page-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .search-container {
-        max-width: 100%;
-    }
-    .header-actions {
-        margin-left: 0;
-        flex-wrap: wrap;
-    }
+.highlight-row {
+    animation: highlightPulse 2s ease-out;
 }
 </style>
 
@@ -514,6 +753,14 @@ function assortmentApp() {
         showModal: false,
         editingProduct: null,
         loading: false,
+        showCategoryModal: false,
+        showProjectModal: false,
+        projects: [],
+        selectedProject: null,
+        editingProject: null,
+        editingCategory: null,
+        categoryForm: { name: '', icon: 'tag', sort_order: 0, project_id: '' },
+        projectForm: { name: '', sort_order: 0 },
 
         // Search
         searchQuery: '',
@@ -523,6 +770,15 @@ function assortmentApp() {
         // Select Mode
         selectMode: false,
         selectedProducts: [],
+
+        // Category filter + pagination
+        selectedCategory: null,
+        currentPage: 1,
+        itemsPerPage: 25,
+        filteredItems: [],
+
+        // UI state
+        showOverflowMenu: false,
 
         form: {
             name: '',
@@ -539,23 +795,126 @@ function assortmentApp() {
             is_alcohol: false
         },
 
-        // Computed: filtered products for display
-        get filteredProducts() {
-            return this.products;
+        // ========== PAGINATION COMPUTED ==========
+        get paginatedItems() {
+            const start = (this.currentPage - 1) * parseInt(this.itemsPerPage);
+            const end = start + parseInt(this.itemsPerPage);
+            return this.filteredItems.slice(start, end);
         },
 
+        get totalPages() {
+            return Math.ceil(this.filteredItems.length / parseInt(this.itemsPerPage)) || 1;
+        },
+
+        get totalItems() {
+            return this.filteredItems.length;
+        },
+
+        get startItem() {
+            if (this.totalItems === 0) return 0;
+            return (this.currentPage - 1) * parseInt(this.itemsPerPage) + 1;
+        },
+
+        get endItem() {
+            return Math.min(this.currentPage * parseInt(this.itemsPerPage), this.totalItems);
+        },
+
+        get visiblePages() {
+            const pages = [];
+            const total = this.totalPages;
+            const current = this.currentPage;
+            if (total <= 7) {
+                for (let i = 1; i <= total; i++) pages.push(i);
+            } else if (current <= 4) {
+                for (let i = 1; i <= 5; i++) pages.push(i);
+                pages.push('...');
+                pages.push(total);
+            } else if (current >= total - 3) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = total - 4; i <= total; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = current - 1; i <= current + 1; i++) pages.push(i);
+                pages.push('...');
+                pages.push(total);
+            }
+            return pages;
+        },
+
+        previousPage() {
+            if (this.currentPage > 1) this.currentPage--;
+        },
+
+        nextPage() {
+            if (this.currentPage < this.totalPages) this.currentPage++;
+        },
+
+        // ========== FILTERS ==========
+        get visibleCategories() {
+            if (!this.selectedProject) return this.categories;
+            return this.categories.filter(c => c.project_id === this.selectedProject);
+        },
+
+        applyFilters() {
+            let items = [...this.products];
+
+            if (this.selectedCategory) {
+                items = items.filter(p => p.category_id === this.selectedCategory);
+            } else if (this.selectedProject) {
+                const projectCatIds = new Set(this.visibleCategories.map(c => c._id));
+                items = items.filter(p => projectCatIds.has(p.category_id));
+            }
+
+            if (this.searchQuery && this.searchQuery.length >= 1) {
+                const q = this.searchQuery.toLowerCase();
+                // Populate jump-to dropdown
+                this.searchResults = items.filter(p =>
+                    p.name.toLowerCase().includes(q) ||
+                    this.getCategoryName(p.category_id).toLowerCase().includes(q)
+                ).slice(0, 10);
+                this.selectedSearchIndex = this.searchResults.length > 0 ? 0 : -1;
+
+                items = items.filter(p =>
+                    p.name.toLowerCase().includes(q) ||
+                    this.getCategoryName(p.category_id).toLowerCase().includes(q) ||
+                    (p._id && p._id.includes(q))
+                );
+            } else {
+                this.searchResults = [];
+                this.selectedSearchIndex = -1;
+            }
+
+            this.filteredItems = items;
+            this.currentPage = 1;
+        },
+
+        // ========== INIT ==========
         async init() {
+            // Restore project + category filters if redirected back from dish form
+            const urlParams = new URLSearchParams(window.location.search);
+            const catFromUrl = urlParams.get('category_id');
+            const projFromUrl = urlParams.get('project_id');
+            if (catFromUrl || projFromUrl) {
+                if (projFromUrl) this.selectedProject = projFromUrl;
+                if (catFromUrl) this.selectedCategory = catFromUrl;
+                history.replaceState(null, '', '/admin/assortment');
+            }
+
             this.loading = true;
             try {
                 await Promise.all([
                     this.loadProducts(),
                     this.loadModifiers(),
                     this.loadMenuItems(),
-                    this.loadProductTags()
+                    this.loadProductTags(),
+                    this.loadProjects()
                 ]);
                 if (this.categories.length > 0) {
                     this.form.category_id = this.categories[0]._id;
                 }
+                this.applyFilters();
             } finally {
                 this.loading = false;
             }
@@ -565,26 +924,137 @@ function assortmentApp() {
             try {
                 const response = await fetch('/api/products');
                 this.products = await response.json();
+                this.applyFilters();
             } catch (error) {
                 console.error('Error loading products:', error);
             }
         },
 
-        // ========== SEARCH ==========
-        searchProducts() {
-            if (this.searchQuery.length < 2) {
-                this.searchResults = [];
-                this.selectedSearchIndex = -1;
-                return;
+        async loadCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                this.categories = await response.json();
+                this.applyFilters();
+            } catch (error) {
+                console.error('Error loading categories:', error);
             }
-            const q = this.searchQuery.toLowerCase();
-            this.searchResults = this.products.filter(p =>
-                p.name.toLowerCase().includes(q) ||
-                this.getCategoryName(p.category_id).toLowerCase().includes(q)
-            ).slice(0, 20); // Max 20 results
-            this.selectedSearchIndex = this.searchResults.length > 0 ? 0 : -1;
         },
 
+        async loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                this.projects = await response.json();
+            } catch (error) {
+                console.error('Error loading projects:', error);
+            }
+        },
+
+        openProjectModal() {
+            this.editingProject = null;
+            this.projectForm = { name: '', sort_order: this.projects.length };
+            this.showProjectModal = true;
+        },
+
+        openEditProjectModal(proj) {
+            this.editingProject = proj;
+            this.projectForm = { name: proj.name, sort_order: proj.sort_order };
+            this.showProjectModal = true;
+        },
+
+        async saveProject() {
+            try {
+                if (this.editingProject) {
+                    await fetch(`/api/projects/${this.editingProject._id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.projectForm)
+                    });
+                } else {
+                    await fetch('/api/projects', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.projectForm)
+                    });
+                }
+                this.showProjectModal = false;
+                this.editingProject = null;
+                await this.loadProjects();
+            } catch (e) {
+                console.error('Error saving project:', e);
+            }
+        },
+
+        async deleteProjectFromModal() {
+            if (!confirm('Видалити цей проєкт?')) return;
+            try {
+                const res = await fetch(`/api/projects/${this.editingProject._id}`, { method: 'DELETE' });
+                if (!res.ok) {
+                    const data = await res.json();
+                    alert(data.detail || 'Помилка видалення');
+                    return;
+                }
+                this.showProjectModal = false;
+                this.editingProject = null;
+                if (this.selectedProject === this.editingProject?._id) {
+                    this.selectedProject = null;
+                    this.applyFilters();
+                }
+                await this.loadProjects();
+            } catch (e) {
+                console.error('Error deleting project:', e);
+            }
+        },
+
+        openCategoryModal() {
+            this.editingCategory = null;
+            this.categoryForm = { name: '', icon: 'tag', sort_order: this.categories.length, project_id: this.selectedProject || '' };
+            this.showCategoryModal = true;
+        },
+
+        openEditCategoryModal(cat) {
+            this.editingCategory = cat;
+            this.categoryForm = { name: cat.name, icon: cat.icon || 'tag', sort_order: cat.sort_order, project_id: cat.project_id || '' };
+            this.showCategoryModal = true;
+        },
+
+        async saveCategory() {
+            const payload = { ...this.categoryForm };
+            if (!payload.project_id) payload.project_id = null;
+            try {
+                if (this.editingCategory) {
+                    await fetch(`/api/categories/${this.editingCategory._id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    await fetch('/api/categories', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
+                this.showCategoryModal = false;
+                this.editingCategory = null;
+                await this.loadCategories();
+            } catch (error) {
+                console.error('Error saving category:', error);
+            }
+        },
+
+        async deleteCategoryFromModal() {
+            if (!confirm('Видалити цю категорію?')) return;
+            try {
+                await fetch(`/api/categories/${this.editingCategory._id}`, { method: 'DELETE' });
+                this.showCategoryModal = false;
+                this.editingCategory = null;
+                await this.loadCategories();
+            } catch (e) {
+                console.error('Error deleting category:', e);
+            }
+        },
+
+        // ========== SEARCH KEYBOARD NAV ==========
         navigateSearch(direction) {
             if (this.searchResults.length === 0) return;
             this.selectedSearchIndex = Math.max(0, Math.min(
@@ -602,20 +1072,21 @@ function assortmentApp() {
         scrollToProduct(productId) {
             this.searchResults = [];
             this.searchQuery = '';
-            const element = document.getElementById('product-' + productId);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                element.classList.add('highlight');
-                setTimeout(() => element.classList.remove('highlight'), 2000);
-            }
+            this.applyFilters();
+            this.$nextTick(() => {
+                const element = document.getElementById('product-' + productId);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    element.classList.add('highlight-row');
+                    setTimeout(() => element.classList.remove('highlight-row'), 2000);
+                }
+            });
         },
 
         // ========== SELECT MODE ==========
         toggleSelectMode() {
             this.selectMode = !this.selectMode;
-            if (!this.selectMode) {
-                this.selectedProducts = [];
-            }
+            if (!this.selectMode) this.selectedProducts = [];
         },
 
         toggleProductSelection(productId) {
@@ -636,11 +1107,7 @@ function assortmentApp() {
                         await fetch('/api/menu-items', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                product_id: productId,
-                                is_active: true,
-                                sort_order: 0
-                            })
+                            body: JSON.stringify({ product_id: productId, is_active: true, sort_order: 0 })
                         });
                     }
                 }
@@ -659,12 +1126,9 @@ function assortmentApp() {
             this.loading = true;
             try {
                 for (const productId of this.selectedProducts) {
-                    // Remove from menu if exists
                     if (this.isInMenu(productId)) {
                         const menuItemId = this.getMenuItemId(productId);
-                        if (menuItemId) {
-                            await fetch(`/api/menu-items/${menuItemId}`, { method: 'DELETE' });
-                        }
+                        if (menuItemId) await fetch(`/api/menu-items/${menuItemId}`, { method: 'DELETE' });
                     }
                     await fetch(`/api/products/${productId}`, { method: 'DELETE' });
                 }
@@ -680,12 +1144,9 @@ function assortmentApp() {
         // ========== COPY ==========
         async copyProduct(product) {
             if (!confirm(`Копіювати "${product.name}"?`)) return;
-
             this.loading = true;
             try {
-                const response = await fetch(`/api/products/${product._id}/copy`, {
-                    method: 'POST'
-                });
+                const response = await fetch(`/api/products/${product._id}/copy`, { method: 'POST' });
                 if (response.ok) {
                     await this.loadProducts();
                 } else {
@@ -693,12 +1154,12 @@ function assortmentApp() {
                 }
             } catch (error) {
                 console.error('Error copying product:', error);
-                alert('Помилка копіювання');
             } finally {
                 this.loading = false;
             }
         },
 
+        // ========== DATA LOADERS ==========
         async loadModifiers() {
             try {
                 const response = await fetch('/api/modifiers');
@@ -726,18 +1187,38 @@ function assortmentApp() {
             }
         },
 
+        async refreshData() {
+            this.showOverflowMenu = false;
+            this.loading = true;
+            try {
+                await Promise.all([this.loadProducts(), this.loadMenuItems()]);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ========== HELPERS ==========
         toggleTag(tagId) {
             const index = this.form.tags.indexOf(tagId);
-            if (index === -1) {
-                this.form.tags.push(tagId);
-            } else {
-                this.form.tags.splice(index, 1);
-            }
+            if (index === -1) this.form.tags.push(tagId);
+            else this.form.tags.splice(index, 1);
         },
 
         getCategoryName(catId) {
             const cat = this.categories.find(c => c._id === catId);
             return cat ? cat.name : '';
+        },
+
+        getTagName(tagId) {
+            const tag = this.productTags.find(t => t._id === tagId);
+            return tag ? tag.name : '';
+        },
+
+        getTagColor(tagId) {
+            const tag = this.productTags.find(t => t._id === tagId);
+            if (!tag || !tag.color) return 'background: var(--color-bg-body); color: var(--color-text-secondary); border: 1px solid var(--color-border);';
+            // Generate readable text color based on background
+            return `background-color: ${tag.color}20; color: ${tag.color}; border: 1px solid ${tag.color}60;`;
         },
 
         isInMenu(productId) {
@@ -749,49 +1230,56 @@ function assortmentApp() {
             return item ? (item.menu_item_id || item._id) : null;
         },
 
+        // ========== MENU TOGGLE ==========
         async toggleMenu(product) {
-            const scrollPos = window.scrollY; // Save scroll position
             try {
                 if (this.isInMenu(product._id)) {
-                    // Remove from menu
                     const menuItemId = this.getMenuItemId(product._id);
-                    if (menuItemId) {
-                        await fetch(`/api/menu-items/${menuItemId}`, { method: 'DELETE' });
-                    }
+                    if (menuItemId) await fetch(`/api/menu-items/${menuItemId}`, { method: 'DELETE' });
                 } else {
-                    // Add to menu
                     await fetch('/api/menu-items', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            product_id: product._id,
-                            is_active: true,
-                            sort_order: 0
-                        })
+                        body: JSON.stringify({ product_id: product._id, is_active: true, sort_order: 0 })
                     });
                 }
                 await this.loadMenuItems();
-                // Restore scroll position
-                this.$nextTick(() => window.scrollTo(0, scrollPos));
             } catch (error) {
                 console.error('Error toggling menu:', error);
             }
         },
 
-        toggleModifier(modId) {
-            const idx = this.form.modifier_groups.indexOf(modId);
-            if (idx > -1) {
-                this.form.modifier_groups.splice(idx, 1);
-            } else {
-                this.form.modifier_groups.push(modId);
+        // ========== AVAILABILITY ==========
+        async updateAvailability(product, value) {
+            const available = value === 'available';
+            const prev = product.available;
+            product.available = available;
+            try {
+                const res = await fetch(`/api/products/${product._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...product, available })
+                });
+                if (!res.ok) throw new Error('Failed');
+            } catch (e) {
+                product.available = prev;
+                console.error('Error updating availability:', e);
             }
         },
 
+        // ========== MODIFIER ==========
+        toggleModifier(modId) {
+            const idx = this.form.modifier_groups.indexOf(modId);
+            if (idx > -1) this.form.modifier_groups.splice(idx, 1);
+            else this.form.modifier_groups.push(modId);
+        },
+
+        // ========== MODAL ==========
         openModal() {
             this.editingProduct = null;
             this.form = {
                 name: '',
-                category_id: this.categories[0]?._id || '',
+                category_id: this.selectedCategory || this.categories[0]?._id || '',
                 price: 0,
                 description: '',
                 image: '/static/img/placeholder.svg',
@@ -820,17 +1308,13 @@ function assortmentApp() {
 
         async saveProduct() {
             try {
-                const url = this.editingProduct
-                    ? `/api/products/${this.editingProduct._id}`
-                    : '/api/products';
+                const url = this.editingProduct ? `/api/products/${this.editingProduct._id}` : '/api/products';
                 const method = this.editingProduct ? 'PUT' : 'POST';
-
                 await fetch(url, {
                     method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(this.form)
                 });
-
                 this.showModal = false;
                 await this.loadProducts();
             } catch (error) {
@@ -840,16 +1324,11 @@ function assortmentApp() {
 
         async deleteProduct(productId) {
             if (!confirm('Видалити цю страву з асортименту?')) return;
-
             try {
-                // Also remove from menu if exists
                 if (this.isInMenu(productId)) {
                     const menuItemId = this.getMenuItemId(productId);
-                    if (menuItemId) {
-                        await fetch(`/api/menu-items/${menuItemId}`, { method: 'DELETE' });
-                    }
+                    if (menuItemId) await fetch(`/api/menu-items/${menuItemId}`, { method: 'DELETE' });
                 }
-
                 await fetch(`/api/products/${productId}`, { method: 'DELETE' });
                 await this.loadProducts();
                 await this.loadMenuItems();

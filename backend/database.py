@@ -25,11 +25,15 @@ product_tags: Collection = None
 audit_logs: Collection = None
 projects: Collection = None
 delivery_zones: Collection = None
+branches: Collection = None
+customers: Collection = None
+customer_categories: Collection = None
+site_pages: Collection = None
 
 
 def connect_db():
     """Connect to MongoDB Atlas"""
-    global client, db, products, orders, categories, settings, feedbacks, promo_codes, modifiers, combos, menu_items, product_tags, audit_logs, projects, delivery_zones, connected
+    global client, db, products, orders, categories, settings, feedbacks, promo_codes, modifiers, combos, menu_items, product_tags, audit_logs, projects, delivery_zones, branches, customers, customer_categories, site_pages, connected
 
     try:
         client = MongoClient(MONGODB_URL, server_api=ServerApi('1'))
@@ -48,6 +52,10 @@ def connect_db():
         audit_logs = db["audit_logs"]
         projects = db["projects"]
         delivery_zones = db["delivery_zones"]
+        branches = db["branches"]
+        customers = db["customers"]
+        customer_categories = db["customer_categories"]
+        site_pages = db["site_pages"]
 
         # Create indexes
         products.create_index("category_id")
@@ -71,6 +79,17 @@ def connect_db():
         delivery_zones.create_index([("geometry", "2dsphere")])
         delivery_zones.create_index("enabled")
         delivery_zones.create_index("priority")
+        branches.create_index("name")
+        branches.create_index("is_active")
+        customers.create_index("phone", unique=True)
+        customers.create_index("category_ids")
+        customers.create_index([("created_at", -1)])
+        customers.create_index([("total_spent", -1)])
+        customer_categories.create_index("name")
+        customer_categories.create_index("is_active")
+        site_pages.create_index("sort_order")
+        site_pages.create_index("is_published")
+        site_pages.create_index([("sort_order", 1), ("is_published", 1)])
 
         orders.create_index("order_type")
         orders.create_index("payment_status")

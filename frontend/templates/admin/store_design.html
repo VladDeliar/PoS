@@ -24,23 +24,172 @@
                 <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M14.5,8A1.5,1.5 0 0,1 13,6.5A1.5,1.5 0 0,1 14.5,5A1.5,1.5 0 0,1 16,6.5A1.5,1.5 0 0,1 14.5,8M9.5,8A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 9.5,5A1.5,1.5 0 0,1 11,6.5A1.5,1.5 0 0,1 9.5,8M6.5,12A1.5,1.5 0 0,1 5,10.5A1.5,1.5 0 0,1 6.5,9A1.5,1.5 0 0,1 8,10.5A1.5,1.5 0 0,1 6.5,12M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21A1.5,1.5 0 0,0 13.5,19.5C13.5,19.11 13.35,18.76 13.11,18.5C12.88,18.23 12.73,17.88 12.73,17.5A1.5,1.5 0 0,1 14.23,16H16A5,5 0 0,0 21,11C21,6.58 16.97,3 12,3Z"/></svg>
                 <span>Branding</span>
             </button>
+            <div class="toolbar-divider"></div>
+            <button class="toolbar-btn btn-preview" @click="openPreview()" title="Переглянути реальне меню клієнта">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/></svg>
+                <span>Preview</span>
+            </button>
         </div>
         <div class="toolbar-center">
             <span class="toolbar-title">Page Builder</span>
         </div>
         <div class="toolbar-right">
-            <div class="viewport-toggle">
-                <button class="viewport-btn" :class="{ active: previewViewport === 'desktop' }" @click="previewViewport = 'desktop'" title="Desktop">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
-                </button>
-                <button class="viewport-btn" :class="{ active: previewViewport === 'mobile' }" @click="previewViewport = 'mobile'" title="Mobile">
-                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></svg>
-                </button>
-            </div>
             <button class="toolbar-btn btn-save" @click="saveConfig()" :disabled="saving">
                 <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>
                 <span x-text="saving ? 'Saving...' : 'Save'"></span>
             </button>
+        </div>
+    </div>
+
+    <!-- Templates Section -->
+    <div class="templates-section" :class="{ collapsed: !showTemplates }">
+        <div class="templates-header" @click="showTemplates = !showTemplates">
+            <div class="templates-header-left">
+                <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19,5V7H15V5H19M9,5V11H5V5H9M19,13V19H15V13H19M9,17V19H5V17H9M21,3H13V9H21V3M11,3H3V13H11V3M21,11H13V21H21V11M11,15H3V21H11V15Z"/></svg>
+                <h3>Templates</h3>
+            </div>
+            <button class="btn-icon" :style="showTemplates ? '' : 'transform:rotate(-90deg)'">
+                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7,10L12,15L17,10H7Z"/></svg>
+            </button>
+        </div>
+        <div class="templates-body" x-show="showTemplates" x-transition>
+            <template x-for="tpl in templates" :key="tpl.id">
+                <div class="template-card" @click="confirmApplyTemplate(tpl.id)">
+                    <div class="template-preview" :class="'preview-' + tpl.id">
+                        <!-- Grid preview -->
+                        <template x-if="tpl.id === 'grid'">
+                            <div class="tpl-mini">
+                                <div class="tpl-mini-bar"></div>
+                                <div class="tpl-mini-grid">
+                                    <div class="tpl-mini-cell"></div>
+                                    <div class="tpl-mini-cell"></div>
+                                    <div class="tpl-mini-cell"></div>
+                                    <div class="tpl-mini-cell"></div>
+                                    <div class="tpl-mini-cell"></div>
+                                    <div class="tpl-mini-cell"></div>
+                                </div>
+                                <div class="tpl-mini-footer">
+                                    <div></div><div></div><div></div>
+                                </div>
+                            </div>
+                        </template>
+                        <!-- Row preview -->
+                        <template x-if="tpl.id === 'row'">
+                            <div class="tpl-mini">
+                                <div class="tpl-mini-row-layout">
+                                    <div class="tpl-mini-sidebar">
+                                        <div class="tpl-mini-line"></div>
+                                        <div class="tpl-mini-line"></div>
+                                        <div class="tpl-mini-line"></div>
+                                        <div class="tpl-mini-line"></div>
+                                    </div>
+                                    <div class="tpl-mini-list">
+                                        <div class="tpl-mini-item"></div>
+                                        <div class="tpl-mini-item"></div>
+                                        <div class="tpl-mini-item"></div>
+                                    </div>
+                                </div>
+                                <div class="tpl-mini-footer">
+                                    <div></div><div></div><div></div>
+                                </div>
+                            </div>
+                        </template>
+                        <!-- Hero Banner preview -->
+                        <template x-if="tpl.id === 'hero'">
+                            <div class="tpl-mini">
+                                <div class="tpl-mini-hero-img"></div>
+                                <div class="tpl-mini-grid">
+                                    <div class="tpl-mini-cell tpl-cell-blue"></div>
+                                    <div class="tpl-mini-cell tpl-cell-blue"></div>
+                                    <div class="tpl-mini-cell tpl-cell-blue"></div>
+                                    <div class="tpl-mini-cell tpl-cell-blue"></div>
+                                    <div class="tpl-mini-cell tpl-cell-blue"></div>
+                                    <div class="tpl-mini-cell tpl-cell-blue"></div>
+                                </div>
+                                <div class="tpl-mini-footer">
+                                    <div></div><div></div><div></div>
+                                </div>
+                            </div>
+                        </template>
+                        <!-- Landing Page preview -->
+                        <template x-if="tpl.id === 'landing'">
+                            <div class="tpl-mini">
+                                <div class="tpl-mini-bar tpl-bar-orange"></div>
+                                <div class="tpl-mini-text-bar"></div>
+                                <div class="tpl-mini-grid">
+                                    <div class="tpl-mini-cell tpl-cell-orange"></div>
+                                    <div class="tpl-mini-cell tpl-cell-orange"></div>
+                                    <div class="tpl-mini-cell tpl-cell-orange"></div>
+                                    <div class="tpl-mini-cell tpl-cell-orange"></div>
+                                    <div class="tpl-mini-cell tpl-cell-orange"></div>
+                                    <div class="tpl-mini-cell tpl-cell-orange"></div>
+                                </div>
+                                <div class="tpl-mini-footer-map">
+                                    <div class="tpl-mini-footer-map-info">
+                                        <div class="tpl-mini-line tpl-line-orange"></div>
+                                        <div class="tpl-mini-line tpl-line-orange"></div>
+                                        <div class="tpl-mini-line tpl-line-orange"></div>
+                                    </div>
+                                    <div class="tpl-mini-map-block"></div>
+                                </div>
+                            </div>
+                        </template>
+                        <!-- Minimal preview -->
+                        <template x-if="tpl.id === 'minimal'">
+                            <div class="tpl-mini">
+                                <div class="tpl-mini-list">
+                                    <div class="tpl-mini-item tpl-item-grey"></div>
+                                    <div class="tpl-mini-item tpl-item-grey"></div>
+                                    <div class="tpl-mini-item tpl-item-grey"></div>
+                                    <div class="tpl-mini-item tpl-item-grey"></div>
+                                </div>
+                                <div class="tpl-mini-footer tpl-footer-grey">
+                                    <div></div>
+                                </div>
+                            </div>
+                        </template>
+                        <!-- Split Layout preview -->
+                        <template x-if="tpl.id === 'split'">
+                            <div class="tpl-mini">
+                                <div class="tpl-mini-split-layout">
+                                    <div class="tpl-mini-split-main">
+                                        <div class="tpl-mini-item tpl-item-purple"></div>
+                                        <div class="tpl-mini-item tpl-item-purple"></div>
+                                        <div class="tpl-mini-item tpl-item-purple"></div>
+                                    </div>
+                                    <div class="tpl-mini-info-col">
+                                        <div class="tpl-mini-info-bar"></div>
+                                        <div class="tpl-mini-info-bar"></div>
+                                        <div class="tpl-mini-info-bar"></div>
+                                    </div>
+                                </div>
+                                <div class="tpl-mini-footer">
+                                    <div></div><div></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="template-info">
+                        <strong x-text="tpl.name"></strong>
+                        <small x-text="tpl.description"></small>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Apply Template Confirmation -->
+    <div class="modal-overlay" x-show="showApplyConfirm" @click.self="showApplyConfirm = false" x-transition.opacity>
+        <div class="confirm-modal" x-show="showApplyConfirm" x-transition>
+            <div class="confirm-icon">
+                <svg viewBox="0 0 24 24" width="40" height="40"><path fill="currentColor" d="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
+            </div>
+            <h3>Застосувати шаблон?</h3>
+            <p>Це замінить поточний дизайн на обраний шаблон. Ви зможете скасувати через Undo (Ctrl+Z).</p>
+            <div class="confirm-actions">
+                <button class="btn-cancel" @click="showApplyConfirm = false; pendingTemplateId = null">Скасувати</button>
+                <button class="btn-confirm" @click="applyTemplate()">Застосувати</button>
+            </div>
         </div>
     </div>
 
@@ -191,31 +340,49 @@
             </div>
         </div>
 
-        <!-- RIGHT: Live Preview -->
+        <!-- RIGHT: Live Real Preview -->
         <div class="builder-preview-pane">
-            <div class="preview-frame" :class="'viewport-' + previewViewport" :style="'--preview-accent:' + config.branding.accentColor">
-                <template x-for="section in config.sections" :key="section.id">
-                    <div class="preview-section" x-show="section.visible"
-                         :style="getSectionStyles(section)"
-                         @click="highlightSection(section)">
-                        <template x-for="row in section.rows" :key="row.id">
-                            <div class="preview-row" x-show="row.visible" :style="getRowStyles(row)">
-                                <template x-for="col in row.columns" :key="col.id">
-                                    <div class="preview-column" :style="'flex:' + getColumnFlex(col.width)">
-                                        <template x-for="el in col.elements" :key="el.id">
-                                            <div class="preview-element" x-show="el.visible" x-html="renderElement(el)"></div>
-                                        </template>
-                                        <div class="preview-empty-col" x-show="col.elements.length === 0 || col.elements.filter(e => e.visible).length === 0">
-                                            <span>Empty</span>
-                                        </div>
-                                    </div>
-                                </template>
+            <div class="live-preview-header">
+                <div class="live-preview-device-toggle">
+                    <button class="viewport-btn" :class="{ active: previewViewport === 'desktop' }" @click="previewViewport = 'desktop'" title="Desktop">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
+                    </button>
+                    <button class="viewport-btn" :class="{ active: previewViewport === 'tablet' }" @click="previewViewport = 'tablet'" title="Tablet">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19,18H5V6H19M21,4H3C1.89,4 1,4.89 1,6V18A2,2 0 0,0 3,20H21A2,2 0 0,0 23,18V6C23,4.89 22.1,4 21,4Z"/></svg>
+                    </button>
+                    <button class="viewport-btn" :class="{ active: previewViewport === 'mobile' }" @click="previewViewport = 'mobile'" title="Mobile">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></svg>
+                    </button>
+                </div>
+                <div class="live-preview-status">
+                    <span class="live-preview-dot" :class="{ refreshing: livePreviewLoading }"></span>
+                    <span class="live-preview-label" x-text="livePreviewLoading ? 'Оновлення...' : 'Live Preview'"></span>
+                </div>
+                <div class="live-preview-actions">
+                    <button class="btn-icon" @click="refreshLivePreview()" title="Оновити" :disabled="livePreviewLoading">
+                        <svg viewBox="0 0 24 24" width="16" height="16" :class="{ spinning: livePreviewLoading }"><path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
+                    </button>
+                    <a href="/menu" target="_blank" class="btn-icon" title="Відкрити у новій вкладці">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/></svg>
+                    </a>
+                    <button class="btn-icon" @click="openPreview()" title="На весь екран">
+                        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M5,5H10V7H7V10H5V5M14,5H19V10H17V7H14V5M17,14H19V19H14V17H17V14M10,17V19H5V14H7V17H10Z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="live-preview-body">
+                <div class="live-preview-device-wrap" :class="'lp-' + previewViewport">
+                    <template x-if="previewViewport === 'mobile'">
+                        <div class="lp-phone-shell">
+                            <div class="lp-phone-speaker"></div>
+                            <div class="lp-phone-screen">
+                                <iframe :src="'/menu?preview=1&_k=' + livePreviewKey" class="live-preview-iframe" @load="onLivePreviewLoaded()" title="Live Menu Preview"></iframe>
                             </div>
-                        </template>
-                    </div>
-                </template>
-                <div class="preview-empty" x-show="config.sections.length === 0 || config.sections.filter(s => s.visible).length === 0">
-                    <p>No visible sections</p>
+                        </div>
+                    </template>
+                    <template x-if="previewViewport !== 'mobile'">
+                        <iframe :src="'/menu?preview=1&_k=' + livePreviewKey" class="live-preview-iframe" @load="onLivePreviewLoaded()" title="Live Menu Preview"></iframe>
+                    </template>
                 </div>
             </div>
         </div>
@@ -561,6 +728,46 @@
                             </div>
                         </template>
 
+                        <!-- Delivery Map element -->
+                        <template x-if="editingItem.type === 'delivery_map'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Заголовок</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.title" @input="pushHistory()" placeholder="Зони доставки">
+                                </div>
+                                <div class="form-group">
+                                    <label>Висота карти</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.height" @input="pushHistory()" placeholder="300px">
+                                </div>
+                                <p class="form-hint">Відображає інтерактивну карту із зонами доставки. Зони налаштовуються в розділі «Зони доставки».</p>
+                            </div>
+                        </template>
+
+                        <!-- Site Pages element -->
+                        <template x-if="editingItem.type === 'site_pages'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Заголовок</label>
+                                    <input type="text" class="form-input" x-model="editingItem.settings.title" @input="pushHistory()" placeholder="Корисні сторінки">
+                                </div>
+                                <p class="form-hint">Відображає список опублікованих сторінок сайту. Сторінки налаштовуються в розділі «Сторінки сайту».</p>
+                            </div>
+                        </template>
+
+                        <!-- Order Types element -->
+                        <template x-if="editingItem.type === 'order_types'">
+                            <div>
+                                <div class="form-group">
+                                    <label>Style</label>
+                                    <select class="form-input" x-model="editingItem.settings.style" @change="pushHistory()">
+                                        <option value="pills">Pills</option>
+                                        <option value="buttons">Buttons</option>
+                                    </select>
+                                </div>
+                                <p class="form-hint">Order types are configured in Settings > Order Types. This element displays the enabled types for customers to choose.</p>
+                            </div>
+                        </template>
+
                         <!-- Custom HTML element -->
                         <template x-if="editingItem.type === 'custom_html'">
                             <div>
@@ -616,6 +823,10 @@
                             <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H6L4,18V4H20"/></svg></div>
                             <span>Announcement</span>
                         </button>
+                        <button class="element-type-card" @click="addElement('order_types')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M17,18C15.89,18 15,18.89 15,20A2,2 0 0,0 17,22A2,2 0 0,0 19,20C19,18.89 18.1,18 17,18M1,2V4H3L6.6,11.59L5.24,14.04C5.09,14.32 5,14.65 5,15A2,2 0 0,0 7,17H19V15H7.42A0.25,0.25 0 0,1 7.17,14.75L8.1,13H15.55C16.3,13 16.96,12.58 17.3,11.97L20.88,5.5C20.95,5.34 21,5.17 21,5A1,1 0 0,0 20,4H5.21L4.27,2M7,18C5.89,18 5,18.89 5,20A2,2 0 0,0 7,22A2,2 0 0,0 9,20C9,18.89 8.1,18 7,18Z"/></svg></div>
+                            <span>Order Types</span>
+                        </button>
                     </div>
                 </div>
                 <div class="element-category">
@@ -640,6 +851,14 @@
                         <button class="element-type-card" @click="addElement('map')">
                             <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15,19L9,16.89V5L15,7.11M20.5,3C20.44,3 20.39,3 20.34,3L15,5.1L9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0,0 3.5,21C3.55,21 3.61,21 3.66,20.97L9,18.9L15,21L20.64,19.1C20.85,19 21,18.85 21,18.62V3.5A0.5,0.5 0 0,0 20.5,3Z"/></svg></div>
                             <span>Map</span>
+                        </button>
+                        <button class="element-type-card" @click="addElement('delivery_map')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7-7.75 7-13C19,5.13 15.87,2 12,2zM12,11.5c-1.38,0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5,1.12 2.5,2.5S13.38,11.5 12,11.5zM19,17l-2.36,2.95L14,18v2l3,1.5L19,19l2,0.97V23h2v-6H19z"/></svg></div>
+                            <span>Delivery Map</span>
+                        </button>
+                        <button class="element-type-card" @click="addElement('site_pages')">
+                            <div class="etc-icon"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19H8V17H10V19M10,15H8V13H10V15M14,15H12V13H14V15M14,19H12V17H14V19Z"/></svg></div>
+                            <span>Сторінки</span>
                         </button>
                     </div>
                 </div>
@@ -707,8 +926,58 @@
     <!-- Toast -->
     <div class="toast" :class="{ 'toast-error': toastError }" x-show="showToast" x-transition.opacity>
         <svg x-show="!toastError" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z"/></svg>
-        <svg x-show="toastError" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>
+        <svg x-show="toastError" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 12,2Z"/></svg>
         <span x-text="toastMessage"></span>
+    </div>
+
+    <!-- Real Menu Preview Overlay -->
+    <div class="preview-overlay" x-show="showPreview" x-transition.opacity style="display:none" @keydown.escape.window="closePreview()">
+        <div class="preview-overlay-toolbar">
+            <div class="preview-overlay-left">
+                <svg viewBox="0 0 24 24" width="20" height="20" style="color:#a0aec0"><path fill="currentColor" d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/></svg>
+                <span class="preview-overlay-title">Preview</span>
+                <span class="preview-overlay-badge">Реальне меню (зміни не збережено)</span>
+            </div>
+            <div class="preview-device-toggle">
+                <button class="preview-device-btn" :class="{ active: previewDevice === 'desktop' }" @click="previewDevice = 'desktop'" title="Desktop">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z"/></svg>
+                    <span>Desktop</span>
+                </button>
+                <button class="preview-device-btn" :class="{ active: previewDevice === 'tablet' }" @click="previewDevice = 'tablet'" title="Tablet">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,18H5V6H19M21,4H3C1.89,4 1,4.89 1,6V18A2,2 0 0,0 3,20H21A2,2 0 0,0 23,18V6C23,4.89 22.1,4 21,4Z"/></svg>
+                    <span>Tablet</span>
+                </button>
+                <button class="preview-device-btn" :class="{ active: previewDevice === 'mobile' }" @click="previewDevice = 'mobile'" title="Mobile">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M17,19H7V5H17M17,1H7C5.89,1 5,1.89 5,3V21A2,2 0 0,0 7,23H17A2,2 0 0,0 19,21V3C19,1.89 18.1,1 17,1Z"/></svg>
+                    <span>Mobile</span>
+                </button>
+            </div>
+            <div class="preview-overlay-right">
+                <a href="/menu" target="_blank" class="preview-open-tab-btn" title="Відкрити меню у новій вкладці">
+                    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/></svg>
+                    Відкрити у вкладці
+                </a>
+                <button class="preview-close-btn" @click="closePreview()" title="Закрити preview (Escape)">
+                    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+                    Закрити
+                </button>
+            </div>
+        </div>
+        <div class="preview-overlay-body">
+            <div class="preview-device-frame" :class="'device-' + previewDevice">
+                <template x-if="previewDevice === 'mobile'">
+                    <div class="device-mobile-shell">
+                        <div class="device-mobile-speaker"></div>
+                        <div class="device-mobile-screen">
+                            <iframe :src="'/menu?preview=1&_k=' + previewKey" class="preview-real-iframe" title="Menu Preview"></iframe>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="previewDevice !== 'mobile'">
+                    <iframe :src="'/menu?preview=1&_k=' + previewKey" class="preview-real-iframe" title="Menu Preview"></iframe>
+                </template>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

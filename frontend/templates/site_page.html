@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }} - {{ restaurant_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/site_page_view.css">
+{% endblock %}
+
+{% block body %}
+<div class="sp-view-page">
+
+    <!-- Back nav -->
+    <nav class="sp-view-nav">
+        <a href="/menu" class="sp-view-back">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
+            </svg>
+            Повернутись до меню
+        </a>
+    </nav>
+
+    <article class="sp-view-article">
+
+        <!-- Cover image -->
+        {% if page.cover_image %}
+        <div class="sp-view-cover">
+            <img src="{{ page.cover_image }}" alt="{{ page.title }}">
+        </div>
+        {% endif %}
+
+        <!-- Header -->
+        <header class="sp-view-header">
+            {% if page.categories %}
+            <div class="sp-view-tags">
+                {% for cat in page.categories %}
+                <span class="sp-view-tag">{{ cat }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <h1 class="sp-view-title">{{ page.title }}</h1>
+        </header>
+
+        <!-- Description -->
+        {% if page.description %}
+        <div class="sp-view-description">{{ page.description }}</div>
+        {% endif %}
+
+        <!-- Sections -->
+        {% if page.sections %}
+        <div class="sp-view-sections">
+            {% for section in page.sections | sort(attribute='sort_order') %}
+            <section class="sp-view-section">
+                {% if section.title %}
+                <h2 class="sp-view-section-title">{{ section.title }}</h2>
+                {% endif %}
+                {% if section.text %}
+                <p class="sp-view-section-text">{{ section.text }}</p>
+                {% endif %}
+                {% if section.images %}
+                <div class="sp-view-section-images">
+                    {% for img in section.images %}
+                    <img src="{{ img }}" alt="" loading="lazy">
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </section>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+    </article>
+
+</div>
+{% endblock %}

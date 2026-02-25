@@ -5,6 +5,12 @@ from pydantic import BaseModel, Field, field_validator
 from bson import ObjectId
 
 
+def _round_price(v: float) -> float:
+    if v < 0:
+        raise ValueError("Ціна не може бути від'ємною")
+    return round(v, 2)
+
+
 class PyObjectId(str):
     @classmethod
     def __get_validators__(cls):
@@ -19,11 +25,25 @@ class PyObjectId(str):
         raise ValueError("Invalid ObjectId")
 
 
+# Project models
+class ProjectCreate(BaseModel):
+    name: str
+    sort_order: int = 0
+
+
+class Project(ProjectCreate):
+    id: Optional[str] = Field(None, alias="_id")
+
+    class Config:
+        populate_by_name = True
+
+
 # Category models
 class CategoryCreate(BaseModel):
     name: str
     icon: str = "tag"
     sort_order: int = 0
+    project_id: Optional[str] = None
 
 
 class Category(CategoryCreate):
@@ -37,6 +57,11 @@ class Category(CategoryCreate):
 class ModifierOption(BaseModel):
     name: str
     price_add: float = 0  # Additional price for this option
+
+    @field_validator('price_add')
+    @classmethod
+    def round_price_add(cls, v):
+        return _round_price(v)
 
 
 class ModifierGroupCreate(BaseModel):
@@ -117,6 +142,11 @@ class ProductCreate(BaseModel):
     is_alcohol: bool = False  # Alcohol indicator
     project_id: Optional[str] = None  # Project for organization
 
+    @field_validator('price')
+    @classmethod
+    def round_price(cls, v):
+        return _round_price(v)
+
 
 class Product(ProductCreate):
     id: Optional[str] = Field(None, alias="_id")
@@ -132,6 +162,11 @@ class SelectedModifier(BaseModel):
     option_name: str
     price_add: float = 0
 
+    @field_validator('price_add')
+    @classmethod
+    def round_price_add(cls, v):
+        return _round_price(v)
+
 
 # Order item
 class OrderItem(BaseModel):
@@ -142,6 +177,11 @@ class OrderItem(BaseModel):
     modifiers: List[SelectedModifier] = []
     is_combo: bool = False
     combo_items: Optional[List[dict]] = None  # Expanded items for kitchen display
+
+    @field_validator('price')
+    @classmethod
+    def round_price(cls, v):
+        return _round_price(v)
 
 
 # Order models
@@ -157,6 +197,13 @@ class OrderCreate(BaseModel):
     delivery_fee: float = 0  # Passed from frontend for transparency
     notes: Optional[str] = None
     promo_code: Optional[str] = None
+    customer_discount_percent: Optional[float] = None
+    payment_method: str = "cash"  # cash, card, online
+
+    @field_validator('delivery_fee')
+    @classmethod
+    def round_delivery_fee(cls, v):
+        return _round_price(v)
 
 
 class Order(BaseModel):
@@ -166,6 +213,7 @@ class Order(BaseModel):
     total: float
     status: str = "new"  # new, preparing, ready, completed, cancelled
     payment_status: str = "pending"  # pending, paid
+    payment_method: str = "cash"  # cash, card, online
     order_type: str = "dine_in"  # dine_in, takeaway, delivery, self_service
     table_number: Optional[int] = None
     customer_name: Optional[str] = None
@@ -175,6 +223,8 @@ class Order(BaseModel):
     delivery_zone_id: Optional[str] = None
     delivery_zone_name: Optional[str] = None
     delivery_fee: float = 0
+    card_surcharge_percent: float = 0
+    card_surcharge_amount: float = 0
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -230,6 +280,11 @@ class ComboCreate(BaseModel):
     combo_price: float  # Discounted price
     available: bool = True
 
+    @field_validator('regular_price', 'combo_price')
+    @classmethod
+    def round_prices(cls, v):
+        return _round_price(v)
+
 
 class Combo(ComboCreate):
     id: Optional[str] = Field(None, alias="_id")
@@ -249,6 +304,11 @@ class PromoCodeCreate(BaseModel):
     usage_limit: Optional[int] = None  # None = unlimited
     min_order_amount: float = 0
     is_active: bool = True
+
+    @field_validator('discount_value', 'min_order_amount')
+    @classmethod
+    def round_promo_amounts(cls, v):
+        return _round_price(v)
 
 
 class PromoCode(PromoCodeCreate):
@@ -303,6 +363,18 @@ class DeliveryZoneCreate(BaseModel):
     free_delivery_threshold: Optional[float] = Field(None, ge=0)
     enabled: bool = True
     priority: int = Field(0, ge=0)
+
+    @field_validator('delivery_fee', 'min_order_amount')
+    @classmethod
+    def round_zone_fees(cls, v):
+        return round(v, 2)
+
+    @field_validator('free_delivery_threshold')
+    @classmethod
+    def round_free_threshold(cls, v):
+        if v is None:
+            return v
+        return round(v, 2)
 
     @field_validator('radius_km')
     @classmethod
@@ -477,3 +549,76 @@ class PageBuilderConfig(BaseModel):
     sections: List[PageSection] = []
     branding: BrandingSettings = BrandingSettings()
     globalSettings: dict = {}
+
+
+# Customer Category models
+class CustomerCategoryCreate(BaseModel):
+    name: str
+    discount_percent: float = Field(0, ge=0, le=100)
+    color: str = "#6366f1"
+    description: str = ""
+    is_active: bool = True
+
+
+class CustomerCategory(CustomerCategoryCreate):
+    id: Optional[str] = Field(None, alias="_id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+
+
+# Customer models
+class CustomerCreate(BaseModel):
+    name: str = ""
+    phone: str
+    category_ids: List[str] = []
+    notes: str = ""
+
+
+class Customer(CustomerCreate):
+    id: Optional[str] = Field(None, alias="_id")
+    order_history: List[str] = []
+    order_count: int = 0
+    total_spent: float = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+
+
+# Site Pages models
+class ImageDisplayType(str, Enum):
+    STANDARD = "standard"
+    SLIDER = "slider"
+
+
+class SitePageSection(BaseModel):
+    id: str                        # UUID generated by client
+    title: str = ""
+    text: str = ""
+    images: List[str] = []        # URL strings like /static/uploads/sections/...
+    sort_order: int = 0
+
+
+class SitePageCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=50)
+    description: str = Field("", max_length=1000)
+    image_display_type: ImageDisplayType = ImageDisplayType.STANDARD
+    cover_image: str = ""
+    categories: List[str] = []
+    sections: List[SitePageSection] = []
+    is_published: bool = True
+    sort_order: int = 0
+
+
+class SitePageUpdate(BaseModel):
+    title: Optional[str] = Field(None, max_length=50)
+    description: Optional[str] = Field(None, max_length=1000)
+    image_display_type: Optional[ImageDisplayType] = None
+    cover_image: Optional[str] = None
+    categories: Optional[List[str]] = None
+    sections: Optional[List[SitePageSection]] = None
+    is_published: Optional[bool] = None
+    sort_order: Optional[int] = None

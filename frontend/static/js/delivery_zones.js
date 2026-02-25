@@ -18,6 +18,8 @@ function deliveryZonesApp() {
         toastError: false,
         _annularCache: {},
         _resizeTimeout: null,
+        checkCoords: '',
+        checkMarkers: [],
 
         async init() {
             this.initMap();
@@ -31,7 +33,6 @@ function deliveryZonesApp() {
             // Apply center first (renderZonesOnMap depends on this.center)
             if (centerRes?.ok) {
                 this.center = await centerRes.json();
-                this._setupCenterMarker();
                 this.map.setView([this.center.lat, this.center.lng], 13);
             }
 
@@ -42,6 +43,25 @@ function deliveryZonesApp() {
             }
 
             this.newZone();
+
+            // Restore check markers from previous session
+            const savedMarkers = localStorage.getItem('checkMarkersData');
+            const savedOld = localStorage.getItem('checkMarkerCoords');
+            if (savedMarkers) {
+                try {
+                    const markers = JSON.parse(savedMarkers);
+                    for (const m of markers) {
+                        await this._addCheckMarker(m.lat, m.lng, m.coords);
+                    }
+                } catch {}
+            } else if (savedOld) {
+                // Migrate old single-marker format
+                try {
+                    const { lat, lng, coords } = JSON.parse(savedOld);
+                    await this._addCheckMarker(lat, lng, coords || `${lat}, ${lng}`);
+                    localStorage.removeItem('checkMarkerCoords');
+                } catch {}
+            }
         },
 
         initMap() {
@@ -77,36 +97,11 @@ function deliveryZonesApp() {
             });
         },
 
-        _setupCenterMarker() {
-            if (this.centerMarker) {
-                this.centerMarker.setLatLng([this.center.lat, this.center.lng]);
-                return;
-            }
-
-            this.centerMarker = L.marker([this.center.lat, this.center.lng], {
-                draggable: true,
-                icon: L.divIcon({
-                    className: 'center-marker-icon',
-                    html: '<div class="center-marker">📍</div>',
-                    iconSize: [30, 30],
-                    iconAnchor: [15, 30]
-                })
-            }).addTo(this.map);
-
-            this.centerMarker.bindTooltip('Центр доставки (перетягніть)', { permanent: false });
-
-            this.centerMarker.on('dragend', async (e) => {
-                const pos = e.target.getLatLng();
-                await this.updateCenter(pos.lat, pos.lng);
-            });
-        },
-
         async loadCenter() {
             try {
                 const res = await fetch('/api/delivery-zones/center/info');
                 if (!res.ok) return;
                 this.center = await res.json();
-                this._setupCenterMarker();
                 this.map.setView([this.center.lat, this.center.lng], 13);
             } catch (err) {
                 console.error('Failed to load center:', err);
@@ -201,7 +196,7 @@ function deliveryZonesApp() {
                 : L.polygon(geometry, opts);
 
             layer.addTo(this.map);
-            layer.on('click', () => this.selectZone(zone));
+            layer.on('click', (e) => { L.DomEvent.stopPropagation(e); this.selectZone(zone); });
             layer.bindTooltip(zone.name, { permanent: false, direction: 'center' });
             this.circles[zone._id] = layer;
             return layer;
@@ -414,6 +409,85 @@ function deliveryZonesApp() {
                 console.error('Failed to delete zone:', err);
                 this.showNotification('Помилка видалення', true);
             }
+        },
+
+        async checkCoordinates() {
+            const parts = this.checkCoords.trim().split(/[\s,]+/).filter(Boolean);
+            if (parts.length < 2) {
+                this.showNotification('Введіть координати у форматі: широта, довгота', true);
+                return;
+            }
+            const lat = parseFloat(parts[0]);
+            const lng = parseFloat(parts[1]);
+            if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                this.showNotification('Невірні координати', true);
+                return;
+            }
+            const coordStr = this.checkCoords.trim();
+            this.checkCoords = '';
+            await this._addCheckMarker(lat, lng, coordStr);
+        },
+
+        async _addCheckMarker(lat, lng, coords) {
+            const id = Date.now() + Math.random();
+            const mapMarker = L.marker([lat, lng], {
+                draggable: false,
+                icon: L.divIcon({
+                    className: 'check-marker-icon',
+                    html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
+                        <defs>
+                            <filter id="pin-shadow" x="-30%" y="-10%" width="160%" height="140%">
+                                <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.35)"/>
+                            </filter>
+                        </defs>
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 8.25 12 24 12 24S24 20.25 24 12C24 5.373 18.627 0 12 0z"
+                              fill="#e53935" filter="url(#pin-shadow)"/>
+                        <circle cx="12" cy="11" r="5" fill="white"/>
+                    </svg>`,
+                    iconSize: [28, 42],
+                    iconAnchor: [14, 42]
+                })
+            }).addTo(this.map);
+
+            const entry = { id, lat, lng, coords: coords || `${lat.toFixed(6)}, ${lng.toFixed(6)}`, result: null, mapMarker };
+            this.checkMarkers.push(entry);
+            this.map.panTo([lat, lng]);
+
+            try {
+                const res = await fetch(`/api/delivery-zones/detect-coordinates?lat=${lat}&lng=${lng}`);
+                const result = res.ok ? await res.json() : { available: false };
+                const idx = this.checkMarkers.findIndex(m => m.id === id);
+                if (idx !== -1) {
+                    this.checkMarkers[idx] = { ...this.checkMarkers[idx], result };
+                    if (result.available) {
+                        mapMarker.bindTooltip(result.zone_name, { permanent: false });
+                    }
+                }
+            } catch {
+                const idx = this.checkMarkers.findIndex(m => m.id === id);
+                if (idx !== -1) this.checkMarkers[idx] = { ...this.checkMarkers[idx], result: { available: false } };
+            }
+            this._saveCheckMarkers();
+        },
+
+        removeCheckMarker(id) {
+            const idx = this.checkMarkers.findIndex(m => m.id === id);
+            if (idx === -1) return;
+            this.checkMarkers[idx].mapMarker.remove();
+            this.checkMarkers.splice(idx, 1);
+            this._saveCheckMarkers();
+        },
+
+        clearAllCheckMarkers() {
+            this.checkMarkers.forEach(m => m.mapMarker.remove());
+            this.checkMarkers = [];
+            this.checkCoords = '';
+            localStorage.removeItem('checkMarkersData');
+        },
+
+        _saveCheckMarkers() {
+            const data = this.checkMarkers.map(({ id, lat, lng, coords, result }) => ({ id, lat, lng, coords, result }));
+            localStorage.setItem('checkMarkersData', JSON.stringify(data));
         },
 
         showNotification(message, isError = false) {

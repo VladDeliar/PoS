@@ -10,6 +10,17 @@ function menuApp() {
         orderNumber: '',
         tableNumber: null,
         customerPhone: '',
+        customerName: '',
+
+        // Customer lookup
+        customerFound: false,
+        customerLookupLoading: false,
+        customerDiscountPercent: 0,
+        customerDiscountAmount: 0,
+        customerDiscountLabel: '',
+        customerOrderCount: 0,
+        customerTotalSpent: 0,
+        _lookupTimer: null,
 
         // Theme
         theme: localStorage.getItem('theme') || 'light',
@@ -31,6 +42,9 @@ function menuApp() {
         discountType: '',
         discountValue: 0,
 
+        // Order types
+        availableOrderTypes: [],
+
         // Delivery properties
         orderType: 'dine_in',
         deliveryAddress: '',
@@ -39,12 +53,35 @@ function menuApp() {
         deliveryError: '',
         deliveryChecked: false,
 
+        // Delivery zones map
+        deliveryZones: [],
+        deliveryCenter: null,
+        deliveryMapModal: false,
+        _deliveryMaps: {},
+        _zonesLoading: false,
+        _zonesLoaded: false,
+
+        // Site pages
+        sitePages: [],
+        _sitePagesLoading: false,
+        _sitePagesLoaded: false,
+
+        // Payment method
+        paymentMethod: '',
+        cardSurchargePercent: (typeof cardSurchargePercent !== 'undefined') ? cardSurchargePercent : 0,
+
         // V2 Page Builder
         pageSections: [],
         productViewMode: 'list',
         navPosition: 'sidebar',
         cardStyle: 'default',
         borderRadiusMode: 'default',
+
+        // Media slider
+        sliderItems: [],
+        sliderEnabled: false,
+        sliderActive: 0,
+        _sliderTimer: null,
 
         // Cached DOM elements
         _cartBtnEl: null,
@@ -55,6 +92,18 @@ function menuApp() {
             this.$nextTick(() => {
                 this._cartBtnEl = document.querySelector('.cart-btn');
             });
+
+            // Load order types
+            const defaultOt = [
+                { type: 'dine_in', label: 'В закладі', enabled: true, sort_order: 0 },
+                { type: 'takeaway', label: 'З собою', enabled: true, sort_order: 1 },
+                { type: 'delivery', label: 'Доставка', enabled: true, sort_order: 2 }
+            ];
+            const rawOt = typeof orderTypesData !== 'undefined' && orderTypesData.length > 0 ? orderTypesData : defaultOt;
+            this.availableOrderTypes = rawOt.filter(ot => ot.enabled !== false);
+            if (this.availableOrderTypes.length > 0) {
+                this.orderType = this.availableOrderTypes[0].type;
+            }
 
             // Parse storefront config (always v2 after backend migration)
             const cfg = typeof storefrontConfig !== 'undefined' ? storefrontConfig : {};
@@ -107,12 +156,13 @@ function menuApp() {
                 this.cart = JSON.parse(savedCart);
             }
 
-            // Watch cart (debounced save)
+            // Watch cart (debounced save + recalc customer discount)
             this.$watch('cart', () => {
                 clearTimeout(this._cartSaveTimer);
                 this._cartSaveTimer = setTimeout(() => {
                     localStorage.setItem('pos_cart', JSON.stringify(this.cart));
                 }, 300);
+                this.recalcCustomerDiscount();
             });
 
             // Watch order type
@@ -124,6 +174,9 @@ function menuApp() {
                 }
             });
 
+            // Load site pages for nav links (eager, non-blocking)
+            this._loadSitePages();
+
             // Window resize tracking
             this._resizeHandler = () => { this._windowWidth = window.innerWidth; };
             window.addEventListener('resize', this._resizeHandler);
@@ -133,6 +186,15 @@ function menuApp() {
             this.$watch('searchQuery', () => {
                 this.$nextTick(() => this.initScrollSpy());
             });
+
+            // Media slider
+            const sliderCfg = typeof mediaSliderData !== 'undefined' ? mediaSliderData : {};
+            this.sliderEnabled = sliderCfg.enabled || false;
+            this.sliderItems = (sliderCfg.items || [])
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+            if (this.sliderEnabled && this.sliderItems.length > 1) {
+                this._startSliderTimer();
+            }
         },
 
         _applyBranding(branding) {
@@ -172,6 +234,35 @@ function menuApp() {
                 document.documentElement.style.setProperty('--radius-lg', '6px');
                 document.documentElement.style.setProperty('--radius-xl', '8px');
             }
+        },
+
+        // ==================== Media Slider ====================
+
+        _startSliderTimer() {
+            clearInterval(this._sliderTimer);
+            this._sliderTimer = setInterval(() => {
+                this.sliderActive = (this.sliderActive + 1) % this.sliderItems.length;
+            }, 4000);
+        },
+
+        sliderNext() {
+            this.sliderActive = (this.sliderActive + 1) % this.sliderItems.length;
+            this._startSliderTimer();
+        },
+
+        sliderPrev() {
+            this.sliderActive = (this.sliderActive - 1 + this.sliderItems.length) % this.sliderItems.length;
+            this._startSliderTimer();
+        },
+
+        sliderGoTo(idx) {
+            this.sliderActive = idx;
+            this._startSliderTimer();
+        },
+
+        addToCartFromSlider(item) {
+            const product = this.products.find(p => p._id === item.product_id);
+            if (product) this.addToCart(product, null);
         },
 
         // ==================== V2 Page Builder Helpers ====================
@@ -233,10 +324,24 @@ function menuApp() {
                 .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
         },
 
+        _adaptBgColor(color) {
+            if (!color) return '';
+            if (this.theme !== 'dark') return `background-color:${color};`;
+            const hex = color.replace('#', '');
+            if (hex.length === 6) {
+                const r = parseInt(hex.slice(0, 2), 16);
+                const g = parseInt(hex.slice(2, 4), 16);
+                const b = parseInt(hex.slice(4, 6), 16);
+                const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                if (brightness > 180) return `background-color:rgba(255,255,255,0.05);`;
+            }
+            return `background-color:${color};`;
+        },
+
         getSectionStyles(section) {
             const s = section.settings || {};
             let styles = '';
-            if (s.bgColor) styles += `background-color:${s.bgColor};`;
+            if (s.bgColor) styles += this._adaptBgColor(s.bgColor);
             if (s.bgImage) styles += `background-image:url(${s.bgImage});background-size:cover;background-position:center;`;
             if (s.paddingY) styles += `padding-top:${s.paddingY};padding-bottom:${s.paddingY};`;
             return styles;
@@ -246,7 +351,7 @@ function menuApp() {
             const s = row.settings || {};
             let styles = '';
             if (s.gap) styles += `gap:${s.gap};`;
-            if (s.bgColor) styles += `background-color:${s.bgColor};`;
+            if (s.bgColor) styles += this._adaptBgColor(s.bgColor);
             if (s.alignment) styles += `align-items:${s.alignment};`;
             return styles;
         },
@@ -412,12 +517,26 @@ function menuApp() {
         },
 
         getSubtotal() {
-            return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const raw = this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            return Math.round(raw * 100) / 100;
         },
 
         getTotal() {
             const subtotal = this.getSubtotal();
-            return subtotal - this.discountAmount + this.getDeliveryFee();
+            const effectiveDiscount = Math.max(this.discountAmount, this.customerDiscountAmount);
+            const raw = subtotal - effectiveDiscount + this.getDeliveryFee() + this.getCardSurcharge();
+            return Math.round(raw * 100) / 100;
+        },
+
+        getCardSurcharge() {
+            if (this.paymentMethod !== 'card' && this.paymentMethod !== 'online') {
+                return 0;
+            }
+            if (this.cardSurchargePercent <= 0) {
+                return 0;
+            }
+            const subtotal = this.getSubtotal();
+            return Math.round(subtotal * this.cardSurchargePercent / 100 * 100) / 100;
         },
 
         // ==================== Promo ====================
@@ -510,10 +629,71 @@ function menuApp() {
             return this.deliveryZone.delivery_fee || 0;
         },
 
+        // ==================== Customer Lookup ====================
+
+        async lookupCustomer() {
+            const phone = this.customerPhone.trim();
+            if (!phone || phone.length < 10) {
+                this.resetCustomerDiscount();
+                return;
+            }
+
+            clearTimeout(this._lookupTimer);
+            this._lookupTimer = setTimeout(async () => {
+                this.customerLookupLoading = true;
+                try {
+                    const resp = await fetch(`/api/customers/lookup/${encodeURIComponent(phone)}`);
+                    const data = await resp.json();
+
+                    if (data.found) {
+                        this.customerFound = true;
+                        if (data.customer_name && !this.customerName) {
+                            this.customerName = data.customer_name;
+                        }
+                        this.customerDiscountPercent = data.discount_percent || 0;
+                        this.customerDiscountLabel = data.discount_label || '';
+                        this.customerOrderCount = data.order_count || 0;
+                        this.customerTotalSpent = data.total_spent || 0;
+                        this.recalcCustomerDiscount();
+                    } else {
+                        this.resetCustomerDiscount();
+                    }
+                } catch (e) {
+                    console.error('Customer lookup error:', e);
+                    this.resetCustomerDiscount();
+                } finally {
+                    this.customerLookupLoading = false;
+                }
+            }, 500);
+        },
+
+        resetCustomerDiscount() {
+            this.customerFound = false;
+            this.customerDiscountPercent = 0;
+            this.customerDiscountAmount = 0;
+            this.customerDiscountLabel = '';
+            this.customerOrderCount = 0;
+            this.customerTotalSpent = 0;
+        },
+
+        recalcCustomerDiscount() {
+            if (this.customerDiscountPercent > 0) {
+                const subtotal = this.getSubtotal();
+                this.customerDiscountAmount = Math.round(subtotal * this.customerDiscountPercent / 100 * 100) / 100;
+            } else {
+                this.customerDiscountAmount = 0;
+            }
+        },
+
         // ==================== Checkout ====================
 
         async checkout() {
             if (this.cart.length === 0) return;
+
+            if (!this.paymentMethod) {
+                alert('Оберіть спосіб оплати');
+                return;
+            }
 
             if (this.orderType === 'delivery') {
                 if (!this.deliveryChecked || !this.deliveryZone?.available) {
@@ -532,7 +712,8 @@ function menuApp() {
             try {
                 const orderData = {
                     items: this.cart,
-                    order_type: this.orderType
+                    order_type: this.orderType,
+                    payment_method: this.paymentMethod
                 };
 
                 if (this.tableNumber && this.orderType !== 'delivery') {
@@ -541,6 +722,14 @@ function menuApp() {
 
                 if (this.customerPhone && this.customerPhone.trim()) {
                     orderData.customer_phone = this.customerPhone;
+                }
+
+                if (this.customerName && this.customerName.trim()) {
+                    orderData.customer_name = this.customerName;
+                }
+
+                if (this.customerDiscountPercent > 0) {
+                    orderData.customer_discount_percent = this.customerDiscountPercent;
                 }
 
                 if (this.orderType === 'delivery' && this.deliveryZone?.available) {
@@ -564,11 +753,15 @@ function menuApp() {
                     this.cart = [];
                     this.showCart = false;
                     this.removePromoCode();
+                    this.resetCustomerDiscount();
+                    this.customerPhone = '';
+                    this.customerName = '';
                     this.orderType = 'dine_in';
                     this.deliveryAddress = '';
                     this.deliveryZone = null;
                     this.deliveryChecked = false;
                     this.deliveryError = '';
+                    this.paymentMethod = '';
                     window.location.href = `/track/${order._id}`;
                 } else {
                     const error = await response.json();
@@ -632,6 +825,77 @@ function menuApp() {
             if (btn) {
                 btn.classList.add('copied');
                 setTimeout(() => btn.classList.remove('copied'), 1500);
+            }
+        },
+
+        // --- Delivery Zones Map ---
+
+        async _loadDeliveryZones() {
+            if (this._zonesLoaded || this._zonesLoading) return;
+            this._zonesLoading = true;
+            try {
+                const [zones, center] = await Promise.all([
+                    fetch('/api/delivery-zones/').then(r => r.json()).catch(() => []),
+                    fetch('/api/delivery-zones/center/info').then(r => r.json()).catch(() => null)
+                ]);
+                this.deliveryZones = Array.isArray(zones) ? zones.filter(z => z.enabled !== false) : [];
+                this.deliveryCenter = center;
+                this._zonesLoaded = true;
+            } finally {
+                this._zonesLoading = false;
+            }
+        },
+
+        async initDeliveryMap(mapId, invalidateSize) {
+            if (this._deliveryMaps[mapId]) {
+                if (invalidateSize) setTimeout(() => this._deliveryMaps[mapId].invalidateSize(), 150);
+                return;
+            }
+            await this._loadDeliveryZones();
+            const el = document.getElementById(mapId);
+            if (!el || !window.L) return;
+            const lat = this.deliveryCenter?.lat || 48.9219;
+            const lng = this.deliveryCenter?.lng || 24.7082;
+            const map = L.map(mapId, { scrollWheelZoom: false }).setView([lat, lng], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            this.deliveryZones.forEach(zone => {
+                if (!zone.geometry?.coordinates?.[0]) return;
+                // GeoJSON uses [lng, lat]; Leaflet uses [lat, lng]
+                const latlngs = zone.geometry.coordinates[0].map(c => [c[1], c[0]]);
+                L.polygon(latlngs, {
+                    color: zone.color || '#22c55e',
+                    fillColor: zone.color || '#22c55e',
+                    fillOpacity: 0.2,
+                    weight: 2,
+                    opacity: 0.8
+                }).addTo(map).bindTooltip(zone.name, { permanent: false, sticky: true });
+            });
+            this._deliveryMaps[mapId] = map;
+            if (invalidateSize) setTimeout(() => map.invalidateSize(), 150);
+        },
+
+        openDeliveryMapModal() {
+            this.deliveryMapModal = true;
+        },
+
+        closeDeliveryMapModal() {
+            this.deliveryMapModal = false;
+        },
+
+        // --- Site Pages ---
+
+        async _loadSitePages() {
+            if (this._sitePagesLoaded || this._sitePagesLoading) return;
+            this._sitePagesLoading = true;
+            try {
+                const pages = await fetch('/api/site-pages/?published_only=true')
+                    .then(r => r.json()).catch(() => []);
+                this.sitePages = Array.isArray(pages) ? pages : [];
+                this._sitePagesLoaded = true;
+            } finally {
+                this._sitePagesLoading = false;
             }
         }
     };

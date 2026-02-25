@@ -1,0 +1,517 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Сторінки сайту{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/site_pages.css">
+<style>
+/* Inline overrides that align with branches.html card style */
+.settings-card {
+    background: var(--color-bg-card);
+    border-radius: 16px;
+    padding: 25px;
+    border: 2px solid var(--color-border);
+}
+.settings-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+}
+.form-group {
+    margin-bottom: 16px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    font-size: 0.9rem;
+}
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: 0.95rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+.btn-save {
+    width: 100%;
+    padding: 12px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.2s;
+}
+.btn-save:hover:not(:disabled) {
+    background: var(--color-primary-hover, #45a049);
+}
+.btn-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.btn-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-add:hover {
+    background: var(--color-primary-hover, #45a049);
+}
+.btn-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 2px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.btn-icon:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+.btn-icon.danger:hover {
+    border-color: #f44336;
+    color: #f44336;
+}
+.toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    padding: 14px 22px;
+    background: #4CAF50;
+    color: white;
+    border-radius: 10px;
+    font-weight: 500;
+    z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    font-size: 0.95rem;
+}
+.toast.error {
+    background: #f44336;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="sitePages()" x-init="init()" x-cloak>
+
+    <!-- ══════════════════════════════════════════════════════════
+         VIEW: LIST
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="view === 'list'">
+
+        <!-- Page header -->
+        <div class="sp-page-header">
+            <h1>Сторінки сайту</h1>
+            <button @click="openCreate()" class="btn-add">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                Нова сторінка
+            </button>
+        </div>
+
+        <!-- Loading -->
+        <div x-show="loading" style="text-align:center;padding:40px;color:var(--color-text-muted);">
+            Завантаження...
+        </div>
+
+        <!-- Empty state -->
+        <div x-show="!loading && pages.length === 0" class="sp-empty">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg>
+            <p>Сторінок ще немає</p>
+            <button @click="openCreate()" class="btn-add">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                Створити першу сторінку
+            </button>
+        </div>
+
+        <!-- Pages list -->
+        <div x-show="!loading && pages.length > 0" class="pages-list" id="pages-sortable">
+            <template x-for="page in pages" :key="page._id">
+                <div class="page-card" :data-id="page._id">
+                    <!-- Drag handle -->
+                    <span class="drag-handle" title="Перетягніть для зміни порядку">⠿</span>
+
+                    <!-- Info -->
+                    <div class="page-card-info">
+                        <div class="page-card-title" x-text="page.title"></div>
+                        <div class="page-card-meta">
+                            <!-- Published chip -->
+                            <button
+                                class="published-chip"
+                                :class="page.is_published ? 'on' : 'off'"
+                                @click="togglePublished(page)"
+                                :title="page.is_published ? 'Натисніть щоб приховати' : 'Натисніть щоб опублікувати'">
+                                <span x-text="page.is_published ? '● Опубліковано' : '○ Приховано'"></span>
+                            </button>
+                            <!-- Section count -->
+                            <span x-show="page.sections && page.sections.length > 0"
+                                  x-text="page.sections.length + ' ' + (page.sections.length === 1 ? 'секція' : (page.sections.length < 5 ? 'секції' : 'секцій'))"
+                                  style="color:var(--color-text-muted);font-size:0.78rem;"></span>
+                            <!-- Category tags -->
+                            <template x-for="cat in (page.categories || []).slice(0,3)" :key="cat">
+                                <span class="tag-chip" x-text="cat"></span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="page-card-actions">
+                        <button class="btn-icon" @click="openEdit(page)" title="Редагувати">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>
+                        </button>
+                        <button class="btn-icon danger" @click="openDeleteModal(page._id)" title="Видалити">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+    </div><!-- /view list -->
+
+
+    <!-- ══════════════════════════════════════════════════════════
+         VIEW: EDIT
+    ══════════════════════════════════════════════════════════════ -->
+    <div x-show="view === 'edit'">
+
+        <!-- Header -->
+        <div class="sp-page-header">
+            <h1 x-text="editingId ? 'Редагування сторінки' : 'Нова сторінка'"></h1>
+        </div>
+
+        <div class="sp-edit-layout">
+
+            <!-- ── FORM COLUMN ───────────────────────────── -->
+            <div class="sp-form-col">
+
+                <!-- Basic info card -->
+                <div class="settings-card">
+                    <h3>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19H8V17H10V19M10,15H8V13H10V15M14,15H12V13H14V15M14,19H12V17H14V19Z"/></svg>
+                        Основна інформація
+                    </h3>
+
+                    <div class="form-group">
+                        <label>
+                            Заголовок *
+                            <span class="char-count" x-text="form.title.length + '/50'"></span>
+                        </label>
+                        <input type="text"
+                               x-model="form.title"
+                               maxlength="50"
+                               placeholder="Назва сторінки">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Опис / Основний текст
+                            <span class="char-count" x-text="form.description.length + '/1000'"></span>
+                        </label>
+                        <textarea x-model="form.description"
+                                  maxlength="1000"
+                                  rows="5"
+                                  placeholder="Текст сторінки..."></textarea>
+                    </div>
+
+                    <!-- Categories / tags -->
+                    <div class="form-group">
+                        <label>Категорії / теги</label>
+                        <div class="tag-list" x-show="form.categories.length > 0">
+                            <template x-for="cat in form.categories" :key="cat">
+                                <span class="tag-chip">
+                                    <span x-text="cat"></span>
+                                    <button @click="removeTag(cat)" title="Видалити тег">×</button>
+                                </span>
+                            </template>
+                        </div>
+                        <div class="tag-input-row">
+                            <input type="text"
+                                   x-model="tagInput"
+                                   @keydown="addTagOnEnter($event)"
+                                   placeholder="Введіть тег та натисніть Enter або +"
+                                   maxlength="30">
+                            <button class="btn-add-tag" @click="addTag()">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Published -->
+                    <div class="publish-row">
+                        <label>
+                            <input type="checkbox" x-model="form.is_published">
+                            Опублікувати сторінку
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Cover image card -->
+                <div class="settings-card">
+                    <h3>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z"/></svg>
+                        Обкладинка
+                    </h3>
+
+                    <!-- Display type -->
+                    <div class="form-group">
+                        <label>Тип відображення</label>
+                        <div class="radio-group">
+                            <label>
+                                <input type="radio" x-model="form.image_display_type" value="standard">
+                                Стандартне
+                            </label>
+                            <label>
+                                <input type="radio" x-model="form.image_display_type" value="slider">
+                                Слайдер
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Upload zone -->
+                    <div class="upload-zone"
+                         @click="!form.cover_image && $refs.coverInput.click()"
+                         @dragover.prevent="dragging = true"
+                         @dragleave.prevent="dragging = false"
+                         @drop.prevent="handleCoverDrop($event)"
+                         :class="{ dragging: dragging }">
+
+                        <template x-if="form.cover_image">
+                            <div style="position:relative;width:100%;">
+                                <img :src="form.cover_image" class="cover-preview" alt="Обкладинка">
+                                <button class="upload-cover-remove"
+                                        @click.stop="removeCoverImage()"
+                                        title="Видалити зображення">×</button>
+                            </div>
+                        </template>
+
+                        <template x-if="!form.cover_image">
+                            <div class="upload-placeholder">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14,13V17H10V13H7L12,8L17,13M19.35,10.03C18.67,6.59 15.64,4 12,4C9.11,4 6.6,5.64 5.35,8.03C2.34,8.36 0,10.9 0,14A6,6 0 0,0 6,20H19A5,5 0 0,0 24,15C24,12.36 21.95,10.22 19.35,10.03Z"/></svg>
+                                <p>Натисніть або перетягніть зображення</p>
+                            </div>
+                        </template>
+                    </div>
+
+                    <p class="form-hint">JPG, PNG · Макс. 3 МБ · Рекомендовано 1024×768</p>
+                    <input type="file"
+                           x-ref="coverInput"
+                           accept=".jpg,.jpeg,.png"
+                           @change="onCoverInputChange($event)"
+                           style="display:none">
+                </div>
+
+                <!-- Sections card -->
+                <div class="settings-card">
+                    <h3>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3,4H21V8H3V4M3,10H21V14H3V10M3,16H21V20H3V16Z"/></svg>
+                        Секції
+                    </h3>
+
+                    <div class="sections-list" id="sections-sortable">
+                        <template x-for="(section, idx) in form.sections" :key="section.id">
+                            <div class="section-row" :data-id="section.id">
+
+                                <!-- Section header -->
+                                <div class="section-header" @click="section._open = !section._open">
+                                    <span class="drag-handle" @click.stop title="Перетягніть">⠿</span>
+                                    <span class="section-header-title"
+                                          x-text="section.title || ('Секція ' + (idx + 1))"></span>
+                                    <span class="section-chevron" :class="{ open: section._open }">▼</span>
+                                </div>
+
+                                <!-- Section body (collapsible) -->
+                                <div class="section-body" x-show="section._open" x-transition>
+                                    <div class="form-group" style="margin-top:12px;">
+                                        <label>Заголовок секції</label>
+                                        <input type="text"
+                                               x-model="section.title"
+                                               placeholder="Заголовок секції">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Текст секції</label>
+                                        <textarea x-model="section.text"
+                                                  rows="3"
+                                                  placeholder="Текст секції..."></textarea>
+                                    </div>
+
+                                    <!-- Section images -->
+                                    <div class="form-group">
+                                        <label>Фотографії секції</label>
+                                        <div class="section-images">
+                                            <template x-for="img in section.images" :key="img">
+                                                <div class="img-thumb">
+                                                    <img :src="img" alt="">
+                                                    <button class="btn-remove-img"
+                                                            @click="removeSectionImage(section, img)"
+                                                            title="Видалити">×</button>
+                                                </div>
+                                            </template>
+                                            <button class="btn-add-img"
+                                                    @click="openSectionImagePicker(section)"
+                                                    title="Додати фото">
+                                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                                                Фото
+                                            </button>
+                                            <!-- Hidden file input per section -->
+                                            <input type="file"
+                                                   :id="'section-upload-' + section.id"
+                                                   accept=".jpg,.jpeg,.png"
+                                                   @change="onSectionImageChange($event, section)"
+                                                   style="display:none">
+                                        </div>
+                                        <p class="form-hint">JPG, PNG · Макс. 3 МБ · Рекомендовано 1024×768</p>
+                                    </div>
+
+                                    <button class="btn-danger-sm" @click="removeSection(idx)">
+                                        Видалити секцію
+                                    </button>
+                                </div>
+
+                            </div>
+                        </template>
+                    </div>
+
+                    <div style="margin-top:12px;">
+                        <button @click="addSection()" class="btn-add" style="width:100%;justify-content:center;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                            Додати секцію
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action bar -->
+                <div class="sp-action-bar">
+                    <button @click="view = 'list'" class="btn-back">← Назад</button>
+                    <button @click="savePage()"
+                            class="btn-save"
+                            style="width:auto;padding:12px 32px;"
+                            :disabled="saving">
+                        <span x-text="saving ? 'Збереження...' : 'Зберегти'"></span>
+                    </button>
+                </div>
+
+            </div><!-- /form col -->
+
+
+            <!-- ── PREVIEW COLUMN ────────────────────────── -->
+            <div class="sp-preview-col">
+                <div class="preview-frame">
+                    <div class="preview-label">Попередній перегляд</div>
+
+                    <!-- Empty preview -->
+                    <div x-show="!form.title && !form.description && !form.cover_image && form.sections.length === 0"
+                         class="preview-empty">
+                        Заповніть форму, щоб побачити прев'ю
+                    </div>
+
+                    <!-- Cover -->
+                    <template x-if="form.cover_image">
+                        <img :src="form.cover_image" class="preview-cover" alt="">
+                    </template>
+
+                    <!-- Title -->
+                    <div x-show="form.title" class="preview-title" x-text="form.title"></div>
+
+                    <!-- Categories -->
+                    <div x-show="form.categories.length > 0" class="preview-categories">
+                        <template x-for="cat in form.categories" :key="cat">
+                            <span class="preview-cat-chip" x-text="cat"></span>
+                        </template>
+                    </div>
+
+                    <!-- Description -->
+                    <div x-show="form.description" class="preview-description" x-text="form.description"></div>
+
+                    <!-- Sections -->
+                    <template x-for="section in form.sections" :key="section.id">
+                        <div class="preview-section">
+                            <div x-show="section.title" class="preview-section-title" x-text="section.title"></div>
+                            <div x-show="section.text" class="preview-section-text" x-text="section.text"></div>
+                            <div x-show="section.images.length > 0" class="preview-section-images">
+                                <template x-for="img in section.images" :key="img">
+                                    <img :src="img" alt="">
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                </div>
+            </div><!-- /preview col -->
+
+        </div><!-- /sp-edit-layout -->
+
+    </div><!-- /view edit -->
+
+
+    <!-- ══════════════════════════════════════════════════════════
+         DELETE MODAL
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="sp-modal-overlay"
+         x-show="showDeleteModal"
+         x-transition.opacity
+         @click.self="showDeleteModal = false">
+        <div class="sp-modal">
+            <h3>Видалити сторінку?</h3>
+            <p>Цю дію не можна скасувати. Всі зображення сторінки також будуть видалені.</p>
+            <div class="sp-modal-actions">
+                <button @click="showDeleteModal = false" class="btn-back">Скасувати</button>
+                <button @click="confirmDelete()" class="btn-save" style="width:auto;padding:10px 24px;">
+                    Видалити
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════════════════════
+         TOAST
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="toast"
+         :class="{ error: toastError }"
+         x-show="showToast"
+         x-transition.opacity
+         style="display:none;">
+        <span x-text="toastMessage"></span>
+    </div>
+
+</div><!-- /x-data -->
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="/static/js/site_pages.js"></script>
+{% endblock %}

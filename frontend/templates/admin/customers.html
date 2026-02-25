@@ -1,0 +1,510 @@
+{% extends "admin/base.html" %}
+
+{% block page_title %}Клієнти{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.header-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.search-input {
+    padding: 10px 14px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: 0.9rem;
+    min-width: 220px;
+}
+
+.search-input:focus { outline: none; border-color: var(--color-primary); }
+
+.filter-select {
+    padding: 10px 14px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: 0.9rem;
+}
+
+/* Table */
+.customers-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-bg-card);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.customers-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+    border-bottom: 2px solid var(--color-border);
+}
+
+.customers-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.9rem;
+}
+
+.customers-table tr:hover td {
+    background: var(--color-primary-light);
+}
+
+.customers-table tr:last-child td {
+    border-bottom: none;
+}
+
+.customer-name {
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.customer-phone {
+    font-family: monospace;
+    color: var(--color-text-secondary);
+}
+
+.cat-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.cat-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+}
+
+.stat-value {
+    font-weight: 600;
+}
+
+.action-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btns button {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.btn-view { background: var(--color-primary-light); color: var(--color-primary); }
+.btn-view:hover { background: var(--color-primary); color: white; }
+.btn-delete { background: #ffebee; color: #f44336; }
+.btn-delete:hover { background: #f44336; color: white; }
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--color-bg-card);
+    border-radius: 16px;
+    padding: 30px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.modal-header h2 { margin: 0; font-size: 1.3rem; }
+.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--color-text-muted); }
+
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--color-text-primary); }
+.form-group input, .form-group textarea, .form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+    font-size: 1rem;
+}
+.form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--color-primary); }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+.categories-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cat-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+
+.cat-checkbox.selected {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+.cat-checkbox .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-primary:hover { opacity: 0.9; }
+
+/* Order history */
+.order-history {
+    margin-top: 16px;
+}
+
+.order-history h4 {
+    margin-bottom: 10px;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+}
+
+.order-item .order-num { font-weight: 600; color: var(--color-primary); }
+.order-item .order-total { font-weight: 600; }
+.order-item .order-date { color: var(--color-text-muted); font-size: 0.8rem; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--color-text-muted); }
+.empty-state svg { width: 80px; height: 80px; opacity: 0.3; margin-bottom: 20px; }
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.pagination button {
+    padding: 8px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg-card);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.pagination button:hover { border-color: var(--color-primary); }
+.pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="customersApp()" x-init="loadCategories(); loadCustomers()">
+    <div class="page-header">
+        <div>
+            <p style="color: var(--color-text-muted); margin: 0;">Всього: <strong x-text="total"></strong> клієнтів</p>
+        </div>
+        <div class="header-controls">
+            <input type="text" class="search-input" x-model="search" @input.debounce.400ms="loadCustomers()" placeholder="Пошук за ім'ям або телефоном...">
+            <select class="filter-select" x-model="filterCategory" @change="loadCustomers()">
+                <option value="">Всі категорії</option>
+                <template x-for="cat in allCategories" :key="cat._id">
+                    <option :value="cat._id" x-text="cat.name"></option>
+                </template>
+            </select>
+            <button class="btn-add" @click="openModal()">
+                <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+                Додати клієнта
+            </button>
+        </div>
+    </div>
+
+    <!-- Customers Table -->
+    <table class="customers-table" x-show="customers.length > 0">
+        <thead>
+            <tr>
+                <th>Ім'я</th>
+                <th>Телефон</th>
+                <th>Категорії</th>
+                <th>Замовлень</th>
+                <th>Сума</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            <template x-for="c in customers" :key="c._id">
+                <tr>
+                    <td class="customer-name" x-text="c.name || '—'"></td>
+                    <td class="customer-phone" x-text="c.phone"></td>
+                    <td>
+                        <div class="cat-badges">
+                            <template x-for="catId in c.category_ids" :key="catId">
+                                <span class="cat-badge" :style="'background:' + getCatColor(catId)" x-text="getCatName(catId)"></span>
+                            </template>
+                            <span x-show="!c.category_ids || c.category_ids.length === 0" style="color:var(--color-text-muted);font-size:0.8rem;">—</span>
+                        </div>
+                    </td>
+                    <td class="stat-value" x-text="c.order_count"></td>
+                    <td class="stat-value" x-text="c.total_spent + ' грн'"></td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn-view" @click="viewCustomer(c._id)">Деталі</button>
+                            <button class="btn-delete" @click="deleteCustomer(c._id)">X</button>
+                        </div>
+                    </td>
+                </tr>
+            </template>
+        </tbody>
+    </table>
+
+    <div class="pagination" x-show="total > pageSize">
+        <button @click="prevPage()" :disabled="skip === 0">&#8592; Назад</button>
+        <span style="padding:8px;color:var(--color-text-muted);font-size:0.85rem;" x-text="(Math.floor(skip/pageSize)+1) + ' / ' + Math.ceil(total/pageSize)"></span>
+        <button @click="nextPage()" :disabled="skip + pageSize >= total">Далі &#8594;</button>
+    </div>
+
+    <div class="empty-state" x-show="customers.length === 0 && !loading">
+        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg>
+        <h3>Клієнтів поки немає</h3>
+        <p>Клієнти з'являться автоматично після оформлення замовлень з телефоном</p>
+    </div>
+
+    <!-- Detail / Edit Modal -->
+    <div class="modal-overlay" x-show="showModal" x-transition.opacity @click.self="showModal = false" style="display: none;">
+        <div class="modal-content" @click.stop>
+            <div class="modal-header">
+                <h2 x-text="editing ? 'Редагувати клієнта' : 'Новий клієнт'"></h2>
+                <button class="modal-close" @click="showModal = false">&times;</button>
+            </div>
+
+            <form @submit.prevent="save()">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ім'я</label>
+                        <input type="text" x-model="form.name" placeholder="Ім'я клієнта">
+                    </div>
+                    <div class="form-group">
+                        <label>Телефон *</label>
+                        <input type="tel" x-model="form.phone" required placeholder="+380...">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Категорії</label>
+                    <div class="categories-checkboxes">
+                        <template x-for="cat in allCategories" :key="cat._id">
+                            <div class="cat-checkbox"
+                                 :class="{ selected: form.category_ids.includes(cat._id) }"
+                                 @click="toggleFormCategory(cat._id)">
+                                <span class="dot" :style="'background:' + cat.color"></span>
+                                <span x-text="cat.name"></span>
+                                <span x-text="'-' + cat.discount_percent + '%'" style="color:var(--color-text-muted);font-size:0.75rem;"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Нотатки</label>
+                    <textarea x-model="form.notes" rows="2" placeholder="Нотатки про клієнта..."></textarea>
+                </div>
+
+                <!-- Stats (only when editing) -->
+                <div x-show="editing" style="display:flex;gap:20px;margin-bottom:20px;padding:12px;background:var(--color-bg);border-radius:8px;">
+                    <div><span style="color:var(--color-text-muted);font-size:0.8rem;">Замовлень</span><br><strong x-text="detailCustomer?.order_count || 0"></strong></div>
+                    <div><span style="color:var(--color-text-muted);font-size:0.8rem;">Сума покупок</span><br><strong x-text="(detailCustomer?.total_spent || 0) + ' грн'"></strong></div>
+                </div>
+
+                <!-- Order history -->
+                <div class="order-history" x-show="editing && detailOrders.length > 0">
+                    <h4>Останні замовлення</h4>
+                    <template x-for="order in detailOrders" :key="order._id">
+                        <div class="order-item">
+                            <span class="order-num" x-text="order.order_number"></span>
+                            <span class="order-total" x-text="order.total + ' грн'"></span>
+                            <span class="order-date" x-text="new Date(order.created_at).toLocaleDateString('uk-UA')"></span>
+                        </div>
+                    </template>
+                </div>
+
+                <button type="submit" class="btn-primary" x-text="editing ? 'Зберегти зміни' : 'Створити клієнта'"></button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function customersApp() {
+    return {
+        customers: [],
+        allCategories: [],
+        total: 0,
+        search: '',
+        filterCategory: '',
+        skip: 0,
+        pageSize: 50,
+        loading: false,
+        showModal: false,
+        editing: null,
+        detailCustomer: null,
+        detailOrders: [],
+        form: { name: '', phone: '', category_ids: [], notes: '' },
+
+        async loadCategories() {
+            try {
+                const resp = await fetch('/api/customer-categories');
+                const data = await resp.json();
+                this.allCategories = data.items || [];
+            } catch (e) { console.error('Error loading categories:', e); }
+        },
+
+        async loadCustomers() {
+            this.loading = true;
+            try {
+                let url = `/api/customers?skip=${this.skip}&limit=${this.pageSize}`;
+                if (this.search) url += `&search=${encodeURIComponent(this.search)}`;
+                if (this.filterCategory) url += `&category_id=${this.filterCategory}`;
+                const resp = await fetch(url);
+                const data = await resp.json();
+                this.customers = data.items || [];
+                this.total = data.total || 0;
+            } catch (e) { console.error('Error loading customers:', e); }
+            finally { this.loading = false; }
+        },
+
+        getCatName(catId) {
+            const cat = this.allCategories.find(c => c._id === catId);
+            return cat ? cat.name : '?';
+        },
+
+        getCatColor(catId) {
+            const cat = this.allCategories.find(c => c._id === catId);
+            return cat ? cat.color : '#999';
+        },
+
+        prevPage() { if (this.skip > 0) { this.skip -= this.pageSize; this.loadCustomers(); } },
+        nextPage() { if (this.skip + this.pageSize < this.total) { this.skip += this.pageSize; this.loadCustomers(); } },
+
+        openModal() {
+            this.editing = null;
+            this.detailCustomer = null;
+            this.detailOrders = [];
+            this.form = { name: '', phone: '', category_ids: [], notes: '' };
+            this.showModal = true;
+        },
+
+        async viewCustomer(id) {
+            try {
+                const resp = await fetch(`/api/customers/${id}`);
+                const data = await resp.json();
+                this.editing = data;
+                this.detailCustomer = data;
+                this.detailOrders = data.orders || [];
+                this.form = {
+                    name: data.name || '',
+                    phone: data.phone || '',
+                    category_ids: [...(data.category_ids || [])],
+                    notes: data.notes || ''
+                };
+                this.showModal = true;
+            } catch (e) { console.error('Error loading customer:', e); }
+        },
+
+        toggleFormCategory(catId) {
+            const idx = this.form.category_ids.indexOf(catId);
+            if (idx >= 0) this.form.category_ids.splice(idx, 1);
+            else this.form.category_ids.push(catId);
+        },
+
+        async save() {
+            try {
+                const data = {
+                    name: this.form.name,
+                    phone: this.form.phone,
+                    category_ids: this.form.category_ids,
+                    notes: this.form.notes
+                };
+                const url = this.editing ? `/api/customers/${this.editing._id}` : '/api/customers';
+                const method = this.editing ? 'PUT' : 'POST';
+                const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                if (!resp.ok) { const err = await resp.json(); alert(err.detail || 'Помилка'); return; }
+                this.showModal = false;
+                await this.loadCustomers();
+            } catch (e) { console.error('Error saving:', e); alert('Помилка збереження'); }
+        },
+
+        async deleteCustomer(id) {
+            if (!confirm('Видалити цього клієнта?')) return;
+            try { await fetch(`/api/customers/${id}`, { method: 'DELETE' }); await this.loadCustomers(); }
+            catch (e) { console.error('Error deleting:', e); }
+        }
+    };
+}
+</script>
+{% endblock %}

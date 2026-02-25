@@ -13,8 +13,539 @@ function pageBuilderApp() {
         showBrandingPanel: false,
         showAddElement: false,
         showColumnPicker: false,
+        showTemplates: true,
+        showApplyConfirm: false,
+        pendingTemplateId: null,
         addElementTarget: null,
         columnPickerTarget: null,
+
+        // Live preview (always-visible right pane)
+        livePreviewKey: 0,
+        livePreviewLoading: false,
+        _livePreviewTimer: null,
+
+        // Fullscreen overlay preview
+        showPreview: false,
+        previewDevice: 'desktop',
+        previewKey: 0,
+
+        // Pre-built templates
+        templates: [
+            {
+                id: 'grid',
+                name: 'Grid Menu',
+                description: 'Категорії та продукти у вигляді сітки карток',
+                config: {
+                    version: 2,
+                    sections: [
+                        {
+                            id: '_', label: 'Order Types', collapsed: false, visible: true, sort_order: 0, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'order_types', label: 'Order Types', visible: true, sort_order: 0,
+                                        settings: { style: 'pills' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Announcement', collapsed: false, visible: true, sort_order: 1, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'announcement', label: 'Announcement', visible: true, sort_order: 0,
+                                        settings: { text: 'Ласкаво просимо! Замовляйте онлайн.', bgColor: '#FFF3E0', textColor: '#E65100' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Menu', collapsed: false, visible: true, sort_order: 2, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'menu', label: 'Product Menu', visible: true, sort_order: 0,
+                                        settings: { productViewMode: 'grid', navPosition: 'top', cardStyle: 'vertical-hero' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Зони доставки', collapsed: false, visible: true, sort_order: 3, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'delivery_map', label: 'Delivery Map', visible: true, sort_order: 0, settings: { height: '300px', title: 'Зони доставки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Сторінки', collapsed: false, visible: true, sort_order: 4, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'site_pages', label: 'Сторінки', visible: true, sort_order: 0, settings: { title: 'Корисні сторінки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Footer', collapsed: false, visible: true, sort_order: 5, settings: { paddingY: '30px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: { gap: '24px' },
+                                columns: [
+                                    {
+                                        id: '_', width: '1/3', sort_order: 0, settings: {},
+                                        elements: [{ id: '_', type: 'address', label: 'Address', visible: true, sort_order: 0, settings: { showMap: false, showCopyButton: true } }]
+                                    },
+                                    {
+                                        id: '_', width: '1/3', sort_order: 1, settings: {},
+                                        elements: [{ id: '_', type: 'hours', label: 'Hours', visible: true, sort_order: 0, settings: { showIcon: true } }]
+                                    },
+                                    {
+                                        id: '_', width: '1/3', sort_order: 2, settings: {},
+                                        elements: [{ id: '_', type: 'phone', label: 'Phone', visible: true, sort_order: 0, settings: { showCopyButton: true } }]
+                                    }
+                                ]
+                            }]
+                        }
+                    ],
+                    branding: { accentColor: '#D32F2F', fontFamily: 'system', borderRadius: 'default' },
+                    globalSettings: {}
+                }
+            },
+            {
+                id: 'row',
+                name: 'Classic List',
+                description: 'Sidebar з категоріями, продукти списком',
+                config: {
+                    version: 2,
+                    sections: [
+                        {
+                            id: '_', label: 'Order Types', collapsed: false, visible: true, sort_order: 0, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'order_types', label: 'Order Types', visible: true, sort_order: 0,
+                                        settings: { style: 'pills' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Menu', collapsed: false, visible: true, sort_order: 1, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'menu', label: 'Product Menu', visible: true, sort_order: 0,
+                                        settings: { productViewMode: 'list', navPosition: 'sidebar', cardStyle: 'default' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Зони доставки', collapsed: false, visible: true, sort_order: 2, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'delivery_map', label: 'Delivery Map', visible: true, sort_order: 0, settings: { height: '300px', title: 'Зони доставки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Сторінки', collapsed: false, visible: true, sort_order: 3, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'site_pages', label: 'Сторінки', visible: true, sort_order: 0, settings: { title: 'Корисні сторінки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Footer', collapsed: false, visible: true, sort_order: 4, settings: { paddingY: '30px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: { gap: '24px' },
+                                columns: [
+                                    {
+                                        id: '_', width: '1/3', sort_order: 0, settings: {},
+                                        elements: [
+                                            { id: '_', type: 'address', label: 'Address', visible: true, sort_order: 0, settings: { showMap: false, showCopyButton: true } },
+                                            { id: '_', type: 'phone', label: 'Phone', visible: true, sort_order: 1, settings: { showCopyButton: true } }
+                                        ]
+                                    },
+                                    {
+                                        id: '_', width: '1/3', sort_order: 1, settings: {},
+                                        elements: [
+                                            { id: '_', type: 'hours', label: 'Hours', visible: true, sort_order: 0, settings: { showIcon: true } }
+                                        ]
+                                    },
+                                    {
+                                        id: '_', width: '1/3', sort_order: 2, settings: {},
+                                        elements: [
+                                            { id: '_', type: 'social', label: 'Social Links', visible: true, sort_order: 0, settings: { links: [], layout: 'vertical' } },
+                                            { id: '_', type: 'map', label: 'Map', visible: true, sort_order: 1, settings: { googleMapsEmbedUrl: '', height: '200px' } }
+                                        ]
+                                    }
+                                ]
+                            }]
+                        }
+                    ],
+                    branding: { accentColor: '#4CAF50', fontFamily: 'system', borderRadius: 'default' },
+                    globalSettings: {}
+                }
+            },
+            {
+                id: 'hero',
+                name: 'Hero Banner',
+                description: 'Велике фото зверху, сітка продуктів нижче',
+                config: {
+                    version: 2,
+                    sections: [
+                        {
+                            id: '_', label: 'Hero Image', collapsed: false, visible: true, sort_order: 0, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'image', label: 'Hero Banner', visible: true, sort_order: 0,
+                                        settings: { imageUrl: '', altText: 'Hero banner', linkUrl: '', width: '100%', borderRadius: '0px' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Order Types', collapsed: false, visible: true, sort_order: 1, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'order_types', label: 'Order Types', visible: true, sort_order: 0,
+                                        settings: { style: 'buttons' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Menu', collapsed: false, visible: true, sort_order: 2, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'menu', label: 'Product Menu', visible: true, sort_order: 0,
+                                        settings: { productViewMode: 'grid', navPosition: 'top', cardStyle: 'vertical-hero' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Зони доставки', collapsed: false, visible: true, sort_order: 3, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'delivery_map', label: 'Delivery Map', visible: true, sort_order: 0, settings: { height: '300px', title: 'Зони доставки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Сторінки', collapsed: false, visible: true, sort_order: 4, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'site_pages', label: 'Сторінки', visible: true, sort_order: 0, settings: { title: 'Корисні сторінки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Footer', collapsed: false, visible: true, sort_order: 5, settings: { paddingY: '30px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: { gap: '24px' },
+                                columns: [
+                                    {
+                                        id: '_', width: '1/3', sort_order: 0, settings: {},
+                                        elements: [{ id: '_', type: 'address', label: 'Address', visible: true, sort_order: 0, settings: { showMap: false, showCopyButton: true } }]
+                                    },
+                                    {
+                                        id: '_', width: '1/3', sort_order: 1, settings: {},
+                                        elements: [{ id: '_', type: 'hours', label: 'Hours', visible: true, sort_order: 0, settings: { showIcon: true } }]
+                                    },
+                                    {
+                                        id: '_', width: '1/3', sort_order: 2, settings: {},
+                                        elements: [{ id: '_', type: 'phone', label: 'Phone', visible: true, sort_order: 0, settings: { showCopyButton: true } }]
+                                    }
+                                ]
+                            }]
+                        }
+                    ],
+                    branding: { accentColor: '#2196F3', fontFamily: 'inter', borderRadius: 'rounded' },
+                    globalSettings: {}
+                }
+            },
+            {
+                id: 'landing',
+                name: 'Landing Page',
+                description: 'Оголошення + текст + меню + карта у футері',
+                config: {
+                    version: 2,
+                    sections: [
+                        {
+                            id: '_', label: 'Announcement', collapsed: false, visible: true, sort_order: 0, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'announcement', label: 'Announcement', visible: true, sort_order: 0,
+                                        settings: { text: 'Ласкаво просимо! Замовляйте онлайн — швидко і зручно.', bgColor: '#FBE9E7', textColor: '#BF360C' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Welcome', collapsed: false, visible: true, sort_order: 1, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'text', label: 'Welcome Text', visible: true, sort_order: 0,
+                                        settings: { content: '<h2 style="margin:0 0 8px">Раді вас бачити!</h2><p style="margin:0;color:#666">Оберіть страви з нашого меню та зробіть замовлення онлайн.</p>', fontSize: '16px', color: '', textAlign: 'center', padding: '24px 16px' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Order Types', collapsed: false, visible: true, sort_order: 2, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'order_types', label: 'Order Types', visible: true, sort_order: 0,
+                                        settings: { style: 'pills' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Menu', collapsed: false, visible: true, sort_order: 3, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'menu', label: 'Product Menu', visible: true, sort_order: 0,
+                                        settings: { productViewMode: 'grid', navPosition: 'top', cardStyle: 'vertical-hero' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Зони доставки', collapsed: false, visible: true, sort_order: 4, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'delivery_map', label: 'Delivery Map', visible: true, sort_order: 0, settings: { height: '300px', title: 'Зони доставки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Сторінки', collapsed: false, visible: true, sort_order: 5, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'site_pages', label: 'Сторінки', visible: true, sort_order: 0, settings: { title: 'Корисні сторінки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Footer', collapsed: false, visible: true, sort_order: 6, settings: { paddingY: '30px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: { gap: '24px' },
+                                columns: [
+                                    {
+                                        id: '_', width: '1/2', sort_order: 0, settings: {},
+                                        elements: [
+                                            { id: '_', type: 'address', label: 'Address', visible: true, sort_order: 0, settings: { showMap: false, showCopyButton: true } },
+                                            { id: '_', type: 'phone', label: 'Phone', visible: true, sort_order: 1, settings: { showCopyButton: true } },
+                                            { id: '_', type: 'hours', label: 'Hours', visible: true, sort_order: 2, settings: { showIcon: true } }
+                                        ]
+                                    },
+                                    {
+                                        id: '_', width: '1/2', sort_order: 1, settings: {},
+                                        elements: [
+                                            { id: '_', type: 'map', label: 'Map', visible: true, sort_order: 0, settings: { googleMapsEmbedUrl: '', height: '260px' } }
+                                        ]
+                                    }
+                                ]
+                            }]
+                        }
+                    ],
+                    branding: { accentColor: '#FF5722', fontFamily: 'nunito', borderRadius: 'rounded' },
+                    globalSettings: {}
+                }
+            },
+            {
+                id: 'minimal',
+                name: 'Minimal',
+                description: 'Тільки меню без зайвих блоків, чистий вигляд',
+                config: {
+                    version: 2,
+                    sections: [
+                        {
+                            id: '_', label: 'Order Types', collapsed: false, visible: true, sort_order: 0, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'order_types', label: 'Order Types', visible: true, sort_order: 0,
+                                        settings: { style: 'pills' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Menu', collapsed: false, visible: true, sort_order: 1, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'menu', label: 'Product Menu', visible: true, sort_order: 0,
+                                        settings: { productViewMode: 'list', navPosition: 'top', cardStyle: 'horizontal' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Зони доставки', collapsed: false, visible: true, sort_order: 2, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'delivery_map', label: 'Delivery Map', visible: true, sort_order: 0, settings: { height: '260px', title: 'Зони доставки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Сторінки', collapsed: false, visible: true, sort_order: 3, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{ id: '_', type: 'site_pages', label: 'Сторінки', visible: true, sort_order: 0, settings: { title: 'Корисні сторінки' } }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Footer', collapsed: false, visible: true, sort_order: 4, settings: { paddingY: '16px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [
+                                        { id: '_', type: 'phone', label: 'Phone', visible: true, sort_order: 0, settings: { showCopyButton: false } }
+                                    ]
+                                }]
+                            }]
+                        }
+                    ],
+                    branding: { accentColor: '#607D8B', fontFamily: 'system', borderRadius: 'sharp' },
+                    globalSettings: {}
+                }
+            },
+            {
+                id: 'split',
+                name: 'Split Layout',
+                description: 'Меню зліва, інформація про заклад справа',
+                config: {
+                    version: 2,
+                    sections: [
+                        {
+                            id: '_', label: 'Order Types', collapsed: false, visible: true, sort_order: 0, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: {},
+                                columns: [{
+                                    id: '_', width: '1/1', sort_order: 0, settings: {},
+                                    elements: [{
+                                        id: '_', type: 'order_types', label: 'Order Types', visible: true, sort_order: 0,
+                                        settings: { style: 'buttons' }
+                                    }]
+                                }]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Content', collapsed: false, visible: true, sort_order: 1, settings: {},
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: { gap: '24px' },
+                                columns: [
+                                    {
+                                        id: '_', width: '2/3', sort_order: 0, settings: {},
+                                        elements: [{
+                                            id: '_', type: 'menu', label: 'Product Menu', visible: true, sort_order: 0,
+                                            settings: { productViewMode: 'list', navPosition: 'top', cardStyle: 'default' }
+                                        }]
+                                    },
+                                    {
+                                        id: '_', width: '1/3', sort_order: 1, settings: {},
+                                        elements: [
+                                            { id: '_', type: 'hours', label: 'Hours', visible: true, sort_order: 0, settings: { showIcon: true } },
+                                            { id: '_', type: 'spacer', label: 'Spacer', visible: true, sort_order: 1, settings: { height: '16px', showDivider: true, dividerColor: '#e0e0e0' } },
+                                            { id: '_', type: 'address', label: 'Address', visible: true, sort_order: 2, settings: { showMap: false, showCopyButton: true } },
+                                            { id: '_', type: 'spacer', label: 'Spacer', visible: true, sort_order: 3, settings: { height: '16px', showDivider: true, dividerColor: '#e0e0e0' } },
+                                            { id: '_', type: 'phone', label: 'Phone', visible: true, sort_order: 4, settings: { showCopyButton: true } },
+                                            { id: '_', type: 'spacer', label: 'Spacer', visible: true, sort_order: 5, settings: { height: '16px', showDivider: true, dividerColor: '#e0e0e0' } },
+                                            { id: '_', type: 'delivery_map', label: 'Delivery Map', visible: true, sort_order: 6, settings: { height: '220px', title: 'Зони доставки' } },
+                                            { id: '_', type: 'spacer', label: 'Spacer', visible: true, sort_order: 7, settings: { height: '16px', showDivider: true, dividerColor: '#e0e0e0' } },
+                                            { id: '_', type: 'site_pages', label: 'Сторінки', visible: true, sort_order: 8, settings: { title: 'Корисні сторінки' } }
+                                        ]
+                                    }
+                                ]
+                            }]
+                        },
+                        {
+                            id: '_', label: 'Footer', collapsed: false, visible: true, sort_order: 2, settings: { paddingY: '30px' },
+                            rows: [{
+                                id: '_', visible: true, sort_order: 0, settings: { gap: '24px' },
+                                columns: [
+                                    {
+                                        id: '_', width: '1/2', sort_order: 0, settings: {},
+                                        elements: [{ id: '_', type: 'social', label: 'Social Links', visible: true, sort_order: 0, settings: { links: [], layout: 'horizontal' } }]
+                                    },
+                                    {
+                                        id: '_', width: '1/2', sort_order: 1, settings: {},
+                                        elements: [{ id: '_', type: 'map', label: 'Map', visible: true, sort_order: 0, settings: { googleMapsEmbedUrl: '', height: '200px' } }]
+                                    }
+                                ]
+                            }]
+                        }
+                    ],
+                    branding: { accentColor: '#9C27B0', fontFamily: 'lato', borderRadius: 'default' },
+                    globalSettings: {}
+                }
+            }
+        ],
 
         // Undo/Redo
         history: [],
@@ -51,6 +582,9 @@ function pageBuilderApp() {
             spacer: { height: '40px', showDivider: false, dividerColor: '#e0e0e0' },
             map: { googleMapsEmbedUrl: '', height: '300px' },
             custom_html: { htmlContent: '' },
+            order_types: { style: 'pills' },
+            delivery_map: { height: '300px', title: 'Зони доставки' },
+            site_pages: { title: 'Корисні сторінки' },
         },
 
         elementLabels: {
@@ -65,12 +599,16 @@ function pageBuilderApp() {
             spacer: 'Spacer',
             map: 'Map',
             custom_html: 'Custom HTML',
+            order_types: 'Order Types',
+            delivery_map: 'Delivery Map',
+            site_pages: 'Сторінки',
         },
 
         // Init
         async init() {
             await this.loadConfig();
             this.pushHistory();
+            this.refreshLivePreview(); // initial load of real preview
         },
 
         async loadConfig() {
@@ -353,6 +891,7 @@ function pageBuilderApp() {
                 spacer: '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M18,18H6V6H18V18M18,4H6A2,2 0 0,0 4,6V18A2,2 0 0,0 6,20H18A2,2 0 0,0 20,18V6A2,2 0 0,0 18,4M11,10H13V14H11V10Z"/></svg>',
                 map: '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M15,19L9,16.89V5L15,7.11M20.5,3C20.44,3 20.39,3 20.34,3L15,5.1L9,3L3.36,4.9C3.15,4.97 3,5.15 3,5.38V20.5A0.5,0.5 0 0,0 3.5,21L9,18.9L15,21L20.64,19.1C20.85,19 21,18.85 21,18.62V3.5A0.5,0.5 0 0,0 20.5,3Z"/></svg>',
                 custom_html: '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M14.6,16.6L19.2,12L14.6,7.4L16,6L22,12L16,18L14.6,16.6M9.4,16.6L4.8,12L9.4,7.4L8,6L2,12L8,18L9.4,16.6Z"/></svg>',
+                order_types: '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M17,18C15.89,18 15,18.89 15,20A2,2 0 0,0 17,22A2,2 0 0,0 19,20C19,18.89 18.1,18 17,18M1,2V4H3L6.6,11.59L5.24,14.04C5.09,14.32 5,14.65 5,15A2,2 0 0,0 7,17H19V15H7.42A0.25,0.25 0 0,1 7.17,14.75L8.1,13H15.55C16.3,13 16.96,12.58 17.3,11.97L20.88,5.5C20.95,5.34 21,5.17 21,5A1,1 0 0,0 20,4H5.21L4.27,2M7,18C5.89,18 5,18.89 5,20A2,2 0 0,0 7,22A2,2 0 0,0 9,20C9,18.89 8.1,18 7,18Z"/></svg>',
             };
             return icons[type] || icons.text;
         },
@@ -418,8 +957,31 @@ function pageBuilderApp() {
                     if (!s.googleMapsEmbedUrl) return '<div class="pe-placeholder pe-map-ph">Map placeholder</div>';
                     return `<iframe src="${this.escapeHtml(s.googleMapsEmbedUrl)}" style="width:100%;height:${s.height || '300px'};border:0;border-radius:8px" allowfullscreen loading="lazy"></iframe>`;
 
+                case 'delivery_map':
+                    return `<div class="pe-placeholder pe-map-ph" style="display:flex;flex-direction:column;gap:6px;align-items:center">
+                        <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M12,11.5A2.5,2.5 0 0,1 9.5,9A2.5,2.5 0 0,1 12,6.5A2.5,2.5 0 0,1 14.5,9A2.5,2.5 0 0,1 12,11.5M12,2A7,7 0 0,0 5,9C5,14.25 12,22 12,22C12,22 19,14.25 19,9A7,7 0 0,0 12,2Z"/></svg>
+                        <span>${s.title || 'Зони доставки'}</span>
+                        <small style="opacity:0.6">Leaflet map · ${s.height || '300px'}</small>
+                    </div>`;
+
+                case 'site_pages':
+                    return `<div class="pe-placeholder" style="display:flex;flex-direction:column;gap:6px;align-items:center">
+                        <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M10,19H8V17H10V19M10,15H8V13H10V15M14,15H12V13H14V15M14,19H12V17H14V19Z"/></svg>
+                        <span>${s.title || 'Корисні сторінки'}</span>
+                        <small style="opacity:0.6">Список опублікованих сторінок</small>
+                    </div>`;
+
                 case 'custom_html':
                     return s.htmlContent || '<div class="pe-placeholder">Custom HTML</div>';
+
+                case 'order_types':
+                    return `<div class="pe-placeholder pe-order-types-ph">
+                        <div style="display:flex;gap:8px;justify-content:center">
+                            <span style="padding:6px 16px;background:var(--preview-accent,#4CAF50);color:white;border-radius:20px;font-size:0.78rem;font-weight:600">В закладі</span>
+                            <span style="padding:6px 16px;background:var(--color-bg-body);border:1px solid var(--color-border);border-radius:20px;font-size:0.78rem;color:var(--color-text-secondary)">З собою</span>
+                            <span style="padding:6px 16px;background:var(--color-bg-body);border:1px solid var(--color-border);border-radius:20px;font-size:0.78rem;color:var(--color-text-secondary)">Доставка</span>
+                        </div>
+                    </div>`;
 
                 default:
                     return `<div class="pe-placeholder">${el.type}</div>`;
@@ -441,6 +1003,7 @@ function pageBuilderApp() {
                 this.history.shift();
                 this.historyIndex--;
             }
+            this.schedulePreviewRefresh();
         },
 
         undo() {
@@ -472,6 +1035,74 @@ function pageBuilderApp() {
                 e.preventDefault();
                 this.saveConfig();
             }
+        },
+
+        // ---- Templates ----
+
+        confirmApplyTemplate(templateId) {
+            this.pendingTemplateId = templateId;
+            this.showApplyConfirm = true;
+        },
+
+        applyTemplate() {
+            const template = this.templates.find(t => t.id === this.pendingTemplateId);
+            if (!template) return;
+
+            this.pushHistory();
+            const newConfig = JSON.parse(JSON.stringify(template.config));
+            this.reassignAllIds(newConfig);
+            this.config = newConfig;
+            this.editingItem = null;
+            this.showBrandingPanel = false;
+            this.showApplyConfirm = false;
+            this.pendingTemplateId = null;
+            this.pushHistory();
+            this.showNotification('Template "' + template.name + '" applied');
+        },
+
+        reassignAllIds(config) {
+            if (config.sections) {
+                config.sections.forEach(s => this.reassignIds(s));
+            }
+        },
+
+        // ---- Live Preview (always-visible pane) ----
+
+        schedulePreviewRefresh() {
+            clearTimeout(this._livePreviewTimer);
+            this.livePreviewLoading = true;
+            this._livePreviewTimer = setTimeout(() => {
+                this.refreshLivePreview();
+            }, 800);
+        },
+
+        refreshLivePreview() {
+            clearTimeout(this._livePreviewTimer);
+            try {
+                sessionStorage.setItem('pb_preview_config', JSON.stringify(this.config));
+            } catch(e) {}
+            this.livePreviewLoading = true;
+            this.livePreviewKey++;
+        },
+
+        onLivePreviewLoaded() {
+            this.livePreviewLoading = false;
+        },
+
+        // ---- Fullscreen Preview Overlay ----
+
+        openPreview() {
+            try {
+                sessionStorage.setItem('pb_preview_config', JSON.stringify(this.config));
+            } catch(e) {
+                console.error('Failed to store preview config:', e);
+            }
+            this.previewKey++;
+            this.showPreview = true;
+        },
+
+        closePreview() {
+            this.showPreview = false;
         },
 
         // ---- Save ----
