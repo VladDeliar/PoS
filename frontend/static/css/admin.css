@@ -116,12 +116,18 @@
     position: sticky;
     top: 0;
     z-index: 50;
+    gap: 15px;
+}
+
+.topbar-left {
+    flex-shrink: 0;
 }
 
 .topbar-right {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex-shrink: 0;
 }
 
 .admin-topbar .theme-toggle {
@@ -521,10 +527,6 @@ textarea.form-input {
     height: 20px;
 }
 
-/* Category Icon Preview */
-.cat-icon-preview {
-    display: inline-flex;
-}
 
 /* Stats Grid */
 .stats-grid {

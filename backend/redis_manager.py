@@ -46,8 +46,10 @@ class RedisManager:
             data = await self.redis.get(key)
             if data:
                 return json.loads(data)
-        except Exception:
-            pass
+        except json.JSONDecodeError as e:
+            logger.warning("Failed to decode cached value for key %s: %s", key, e)
+        except Exception as e:
+            logger.error("Redis get error for key %s: %s", key, e)
         return None
 
     async def set_cached(self, key: str, data: Any, ttl: int = 3600):
@@ -56,8 +58,8 @@ class RedisManager:
             return
         try:
             await self.redis.set(key, json.dumps(data, default=str), ex=ttl)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Redis set error for key %s: %s", key, e)
 
     async def invalidate(self, pattern: str):
         """Invalidate cache keys matching pattern"""
@@ -69,8 +71,8 @@ class RedisManager:
                 keys.append(key)
             if keys:
                 await self.redis.delete(*keys)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Cache invalidation failed for pattern %s: %s", pattern, e)
 
     async def invalidate_key(self, key: str):
         """Invalidate a specific cache key"""
@@ -78,8 +80,8 @@ class RedisManager:
             return
         try:
             await self.redis.delete(key)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Redis delete error for key %s: %s", key, e)
 
 
 # Cache key constants

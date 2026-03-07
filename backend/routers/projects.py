@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from bson import ObjectId
+from pymongo import UpdateOne
 
 from .. import database
 from ..models import ProjectCreate
@@ -34,6 +35,23 @@ async def update_project(project_id: str, data: ProjectCreate):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"status": "updated"}
+
+
+@router.post("/reorder")
+async def reorder_projects(req: Request):
+    if not database.connected or database.projects is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    items = await req.json()
+    operations = [
+        UpdateOne(
+            {"_id": ObjectId(item["id"])},
+            {"$set": {"sort_order": item["sort_order"]}}
+        )
+        for item in items if ObjectId.is_valid(item.get("id", ""))
+    ]
+    if operations:
+        database.projects.bulk_write(operations, ordered=False)
+    return {"status": "reordered", "count": len(operations)}
 
 
 @router.delete("/{project_id}")

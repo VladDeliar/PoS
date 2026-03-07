@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from bson import ObjectId
+from pymongo import UpdateOne
 
 from .. import database
 from ..models import CategoryCreate
@@ -49,6 +50,24 @@ async def update_category(category_id: str, data: CategoryCreate):
         raise HTTPException(status_code=404, detail="Category not found")
     await redis_manager.invalidate_key(CACHE_CATEGORIES)
     return {"status": "updated"}
+
+
+@router.post("/reorder")
+async def reorder_categories(req: Request):
+    if not database.connected or database.categories is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    items = await req.json()
+    operations = [
+        UpdateOne(
+            {"_id": ObjectId(item["id"])},
+            {"$set": {"sort_order": item["sort_order"]}}
+        )
+        for item in items if ObjectId.is_valid(item.get("id", ""))
+    ]
+    if operations:
+        database.categories.bulk_write(operations, ordered=False)
+    await redis_manager.invalidate_key(CACHE_CATEGORIES)
+    return {"status": "reordered", "count": len(operations)}
 
 
 @router.delete("/{category_id}")

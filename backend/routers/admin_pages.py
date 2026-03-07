@@ -116,10 +116,6 @@ async def admin_dish_edit_page(request: Request, dish_id: str):
     })
 
 
-@router.get("/categories", response_class=HTMLResponse)
-async def admin_categories_page(request: Request):
-    return templates.TemplateResponse("admin/categories.html", {"request": request})
-
 
 @router.get("/stats", response_class=HTMLResponse)
 async def admin_stats_page(request: Request):

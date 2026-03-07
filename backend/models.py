@@ -25,23 +25,9 @@ class PyObjectId(str):
         raise ValueError("Invalid ObjectId")
 
 
-# Project models
-class ProjectCreate(BaseModel):
-    name: str
-    sort_order: int = 0
-
-
-class Project(ProjectCreate):
-    id: Optional[str] = Field(None, alias="_id")
-
-    class Config:
-        populate_by_name = True
-
-
 # Category models
 class CategoryCreate(BaseModel):
     name: str
-    icon: str = "tag"
     sort_order: int = 0
     project_id: Optional[str] = None
 
@@ -116,6 +102,7 @@ class ProjectCreate(BaseModel):
     name: str
     description: str = ""
     is_active: bool = True
+    sort_order: int = 0
 
 
 class Project(ProjectCreate):

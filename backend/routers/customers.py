@@ -29,9 +29,10 @@ async def get_customers(
 
     query = {}
     if search:
+        escaped = re.escape(search)
         query["$or"] = [
-            {"name": {"$regex": search, "$options": "i"}},
-            {"phone": {"$regex": search, "$options": "i"}}
+            {"name": {"$regex": escaped, "$options": "i"}},
+            {"phone": {"$regex": escaped, "$options": "i"}}
         ]
     if category_id:
         query["category_ids"] = category_id
@@ -82,11 +83,12 @@ async def lookup_customer(phone: str):
                 "_id": {"$in": cat_ids},
                 "is_active": True
             }))
-            for cat in categories:
-                category_names.append(cat["name"])
-                if cat.get("discount_percent", 0) > discount_percent:
-                    discount_percent = cat["discount_percent"]
-                    discount_label = f"Знижка для категорії '{cat['name']}': -{cat['discount_percent']}%"
+            if categories:
+                category_names = [cat["name"] for cat in categories]
+                best_cat = max(categories, key=lambda c: c.get("discount_percent", 0))
+                discount_percent = best_cat.get("discount_percent", 0)
+                if discount_percent > 0:
+                    discount_label = f"Знижка для категорії '{best_cat['name']}': -{discount_percent}%"
 
     return {
         "found": True,

@@ -233,17 +233,19 @@ async def create_order(data: OrderCreate):
         "customer_name": data.customer_name,
         "customer_phone": data.customer_phone,
         "notes": data.notes,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": None  # set below
     }
+
+    created_at = datetime.utcnow()
+    order_doc["created_at"] = created_at.isoformat()
 
     if not database.connected or database.orders is None:
         order_doc["_id"] = str(len(DEMO_ORDERS) + 1)
         DEMO_ORDERS.insert(0, order_doc)
     else:
-        order_doc["created_at"] = datetime.utcnow()
-        result = database.orders.insert_one(order_doc)
+        db_doc = {**order_doc, "created_at": created_at}
+        result = database.orders.insert_one(db_doc)
         order_doc["_id"] = str(result.inserted_id)
-        order_doc["created_at"] = order_doc["created_at"].isoformat()
 
     # Auto-create/update customer record
     if data.customer_phone and database.connected and database.customers is not None:
@@ -322,10 +324,11 @@ async def update_order_status(order_id: str, status: str):
         if status == "completed" and prev_status != "completed":
             customer_phone = order_doc.get("customer_phone")
             if customer_phone and database.customers is not None:
+                phone_normalized = re.sub(r'[\s\-\(\)]', '', customer_phone.strip())
                 order_total = order_doc.get("total", 0)
                 try:
                     database.customers.update_one(
-                        {"phone": customer_phone},
+                        {"phone": phone_normalized},
                         {
                             "$inc": {"order_count": 1, "total_spent": order_total},
                             "$set": {"updated_at": datetime.utcnow()}

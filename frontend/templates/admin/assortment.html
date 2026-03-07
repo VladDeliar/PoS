@@ -1,122 +1,121 @@
 {% extends "admin/base.html" %}
 
-{% block page_title %}Асортимент{% endblock %}
+{% block main_attrs %}x-data="assortmentApp()" x-init="init()"{% endblock %}
+
+{% block topbar_left %}
+<div class="header-tabs">
+    <template x-if="!selectMode || selectedProducts.length === 0">
+        <span style="color: white; font-weight: 600; font-size: 1rem; white-space: nowrap;">Асортимент</span>
+    </template>
+    <template x-if="selectMode && selectedProducts.length > 0">
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="color: rgba(255,255,255,0.9); font-size: 0.875rem;" x-text="'Обрано: ' + selectedProducts.length"></span>
+            <button class="action-button" @click="batchAddToMenu()">
+                <svg viewBox="0 0 24 24"><path d="M12,3L1,9L12,15L21,10.09V17H23V9M5,13.18V17.18L12,21L19,17.18V13.18L12,17L5,13.18Z"/></svg>
+                В меню
+            </button>
+            <button class="action-button" @click="batchDelete()" style="background: rgba(231,76,60,0.7);">
+                <svg viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+                Видалити
+            </button>
+        </div>
+    </template>
+</div>
+{% endblock %}
+
+{% block topbar_middle %}
+<div class="header-search" style="position: relative;">
+    <svg class="search-icon" viewBox="0 0 24 24">
+        <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+    </svg>
+    <input type="text"
+           x-model="searchQuery"
+           @input.debounce.300ms="applyFilters()"
+           @keydown.escape="searchQuery = ''; searchResults = []; applyFilters()"
+           @keydown.arrow-down.prevent="navigateSearch(1)"
+           @keydown.arrow-up.prevent="navigateSearch(-1)"
+           @keydown.enter.prevent="selectSearchResult()"
+           placeholder="Пошук страв...">
+    <div class="search-jump-dropdown" x-show="searchResults.length > 0" @click.away="searchResults = []">
+        <template x-for="(product, idx) in searchResults" :key="product._id">
+            <div class="search-jump-item"
+                 :class="{ active: idx === selectedSearchIndex }"
+                 @click="scrollToProduct(product._id)"
+                 @mouseenter="selectedSearchIndex = idx">
+                <img :src="product.image" :alt="product.name" onerror="this.src='/static/img/placeholder.png'">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 500; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" x-text="product.name"></div>
+                    <div style="font-size: 0.75rem; opacity: 0.7;" x-text="getCategoryName(product.category_id)"></div>
+                </div>
+                <span style="font-weight: 600; font-size: 0.875rem;" x-text="product.price + ' грн'"></span>
+            </div>
+        </template>
+    </div>
+</div>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="header-actions">
+    <!-- Select Mode Toggle -->
+    <button class="action-button" @click="toggleSelectMode()"
+            :style="selectMode ? 'background: rgba(255,255,255,0.4);' : ''">
+        <svg viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M10,17L6,13L7.41,11.58L10,14.17L16.59,7.58L18,9"/></svg>
+        <span x-text="selectMode ? 'Скасувати' : 'Вибрати'"></span>
+    </button>
+
+    <!-- Notification Bell -->
+    <button class="icon-button" title="Замовлення" @click="window.location.href='/admin/orders'">
+        <svg viewBox="0 0 24 24">
+            <path d="M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M14,21A2,2 0 0,1 12,23A2,2 0 0,1 10,21"/>
+        </svg>
+    </button>
+
+    <!-- 3-dots Overflow Menu -->
+    <div style="position: relative;">
+        <button class="icon-button" @click="showOverflowMenu = !showOverflowMenu">
+            <svg viewBox="0 0 24 24">
+                <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z"/>
+            </svg>
+        </button>
+        <div class="overflow-menu" :class="{ show: showOverflowMenu }" @click.away="showOverflowMenu = false">
+            <div class="overflow-menu-item" @click="refreshData()">
+                <svg viewBox="0 0 24 24"><path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
+                <span>Оновити</span>
+            </div>
+            <div class="overflow-menu-item" @click="window.location.href='/admin/categories'; showOverflowMenu = false">
+                <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20Z"/></svg>
+                <span>Категорії</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Project -->
+    <button class="action-button" @click="openProjectModal()">
+        <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+        <span>Проєкт</span>
+    </button>
+
+    <!-- Add Category -->
+    <button class="action-button" @click="openCategoryModal()">
+        <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+        <span>Категорія</span>
+    </button>
+
+    <!-- Add Dish (Primary) -->
+    <button class="action-button primary" @click="window.location.href='/admin/dishes/create' + (selectedCategory ? '?category_id=' + selectedCategory + (selectedProject ? '&project_id=' + selectedProject : '') : (selectedProject ? '?project_id=' + selectedProject : ''))">
+        <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+        <span>Страву</span>
+    </button>
+</div>
+{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/dishes.css">
 {% endblock %}
 
+{% block content_class %}dishes-page{% endblock %}
+
 {% block content %}
-<div class="admin-content dishes-page" x-data="assortmentApp()" x-init="init()">
-
-    <!-- Green Header Bar -->
-    <div class="dishes-header">
-        <!-- Left: Title / Select-mode batch controls -->
-        <div class="header-tabs">
-            <template x-if="!selectMode || selectedProducts.length === 0">
-                <span style="color: white; font-weight: 600; font-size: 1rem; white-space: nowrap;">Асортимент</span>
-            </template>
-            <template x-if="selectMode && selectedProducts.length > 0">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <span style="color: rgba(255,255,255,0.9); font-size: 0.875rem;" x-text="'Обрано: ' + selectedProducts.length"></span>
-                    <button class="action-button" @click="batchAddToMenu()">
-                        <svg viewBox="0 0 24 24"><path d="M12,3L1,9L12,15L21,10.09V17H23V9M5,13.18V17.18L12,21L19,17.18V13.18L12,17L5,13.18Z"/></svg>
-                        В меню
-                    </button>
-                    <button class="action-button" @click="batchDelete()" style="background: rgba(231,76,60,0.7);">
-                        <svg viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
-                        Видалити
-                    </button>
-                </div>
-            </template>
-        </div>
-
-        <!-- Center: Search -->
-        <div class="header-search" style="position: relative;">
-            <svg class="search-icon" viewBox="0 0 24 24">
-                <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
-            </svg>
-            <input type="text"
-                   x-model="searchQuery"
-                   @input.debounce.300ms="applyFilters()"
-                   @keydown.escape="searchQuery = ''; searchResults = []; applyFilters()"
-                   @keydown.arrow-down.prevent="navigateSearch(1)"
-                   @keydown.arrow-up.prevent="navigateSearch(-1)"
-                   @keydown.enter.prevent="selectSearchResult()"
-                   placeholder="Пошук страв...">
-
-            <!-- Search dropdown -->
-            <div class="search-jump-dropdown" x-show="searchResults.length > 0" @click.away="searchResults = []">
-                <template x-for="(product, idx) in searchResults" :key="product._id">
-                    <div class="search-jump-item"
-                         :class="{ active: idx === selectedSearchIndex }"
-                         @click="scrollToProduct(product._id)"
-                         @mouseenter="selectedSearchIndex = idx">
-                        <img :src="product.image" :alt="product.name" onerror="this.src='/static/img/placeholder.png'">
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="font-weight: 500; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" x-text="product.name"></div>
-                            <div style="font-size: 0.75rem; opacity: 0.7;" x-text="getCategoryName(product.category_id)"></div>
-                        </div>
-                        <span style="font-weight: 600; font-size: 0.875rem;" x-text="product.price + ' грн'"></span>
-                    </div>
-                </template>
-            </div>
-        </div>
-
-        <!-- Right: Actions -->
-        <div class="header-actions">
-            <!-- Select Mode Toggle -->
-            <button class="action-button" @click="toggleSelectMode()"
-                    :style="selectMode ? 'background: rgba(255,255,255,0.4);' : ''">
-                <svg viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M10,17L6,13L7.41,11.58L10,14.17L16.59,7.58L18,9"/></svg>
-                <span x-text="selectMode ? 'Скасувати' : 'Вибрати'"></span>
-            </button>
-
-            <!-- Notification Bell -->
-            <button class="icon-button" title="Замовлення" @click="window.location.href='/admin/orders'">
-                <svg viewBox="0 0 24 24">
-                    <path d="M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M14,21A2,2 0 0,1 12,23A2,2 0 0,1 10,21"/>
-                </svg>
-            </button>
-
-            <!-- 3-dots Overflow Menu -->
-            <div style="position: relative;">
-                <button class="icon-button" @click="showOverflowMenu = !showOverflowMenu">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z"/>
-                    </svg>
-                </button>
-                <div class="overflow-menu" :class="{ show: showOverflowMenu }" @click.away="showOverflowMenu = false">
-                    <div class="overflow-menu-item" @click="refreshData()">
-                        <svg viewBox="0 0 24 24"><path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
-                        <span>Оновити</span>
-                    </div>
-                    <div class="overflow-menu-item" @click="window.location.href='/admin/categories'; showOverflowMenu = false">
-                        <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20Z"/></svg>
-                        <span>Категорії</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Add Project -->
-            <button class="action-button" @click="openProjectModal()">
-                <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
-                <span>Проєкт</span>
-            </button>
-
-            <!-- Add Category -->
-            <button class="action-button" @click="openCategoryModal()">
-                <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
-                <span>Категорія</span>
-            </button>
-
-            <!-- Add Dish (Primary) -->
-            <button class="action-button primary" @click="window.location.href='/admin/dishes/create' + (selectedCategory ? '?category_id=' + selectedCategory + (selectedProject ? '&project_id=' + selectedProject : '') : (selectedProject ? '?project_id=' + selectedProject : ''))">
-                <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
-                <span>Страву</span>
-            </button>
-        </div>
-    </div>
 
     <!-- Content -->
     <div class="dishes-content">
@@ -129,17 +128,23 @@
 
         <div x-show="!loading">
             <!-- Project Filter Pills -->
-            <div class="category-filters" style="flex-wrap: wrap; padding-bottom: 4px; border-bottom: 1px solid var(--color-border); margin-bottom: 6px;" x-show="projects.length > 0">
+            <div id="projects-filter" class="category-filters" style="flex-wrap: wrap; padding-bottom: 4px; border-bottom: 1px solid var(--color-border); margin-bottom: 6px;" x-show="projects.length > 0">
                 <button class="category-pill"
                         :class="{ active: selectedProject === null }"
                         @click="selectedProject = null; selectedCategory = null; applyFilters()">
                     Всі
                 </button>
-                <template x-for="proj in projects" :key="proj._id">
+                <template x-for="(proj, idx) in projects" :key="proj._id">
                     <button class="category-pill"
-                            :class="{ active: selectedProject === proj._id }"
+                            :data-id="proj._id"
+                            :class="{ active: selectedProject === proj._id, 'pill-dragging': dragProjIdx === idx }"
+                            draggable="true"
+                            @dragstart.stop="dragProjIdx = idx"
+                            @dragover.prevent="swapProject(idx)"
+                            @dragend="saveProjectOrder()"
                             @click="selectedProject = proj._id; selectedCategory = null; applyFilters()"
                             style="display: inline-flex; align-items: center; gap: 2px;">
+                        <span class="drag-handle" @click.stop title="Перетягнути">⠿</span>
                         <span x-text="proj.name"></span>
                         <span class="pill-edit-icon" @click.stop="openEditProjectModal(proj)" title="Редагувати">
                             <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>
@@ -149,17 +154,23 @@
             </div>
 
             <!-- Category Filter Pills -->
-            <div class="category-filters" style="flex-wrap: wrap; padding-bottom: 6px;">
+            <div id="categories-filter" class="category-filters" style="flex-wrap: wrap; padding-bottom: 6px;">
                 <button class="category-pill"
                         :class="{ active: selectedCategory === null }"
                         @click="selectedCategory = null; applyFilters()">
                     Всі
                 </button>
-                <template x-for="cat in visibleCategories" :key="cat._id">
+                <template x-for="(cat, idx) in visibleCategories" :key="cat._id">
                     <button class="category-pill"
-                            :class="{ active: selectedCategory === cat._id }"
+                            :data-id="cat._id"
+                            :class="{ active: selectedCategory === cat._id, 'pill-dragging': dragCatIdx === idx }"
+                            draggable="true"
+                            @dragstart.stop="dragCatIdx = idx"
+                            @dragover.prevent="swapCategory(idx)"
+                            @dragend="saveCategoryOrder()"
                             @click="selectedCategory = cat._id; applyFilters()"
                             style="display: inline-flex; align-items: center; gap: 2px;">
+                        <span class="drag-handle" @click.stop title="Перетягнути">⠿</span>
                         <span x-text="cat.name"></span>
                         <span class="pill-edit-icon" @click.stop="openEditCategoryModal(cat)" title="Редагувати">
                             <svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/></svg>
@@ -492,10 +503,6 @@
                         <label class="form-label">Назва</label>
                         <input type="text" class="form-input" x-model="projectForm.name" required placeholder="Наприклад: Кавʼярня">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Порядок сортування</label>
-                        <input type="number" class="form-input" x-model="projectForm.sort_order">
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button x-show="editingProject" type="button" class="btn btn-danger" @click="deleteProjectFromModal()">Видалити</button>
@@ -519,22 +526,7 @@
                         <label class="form-label">Назва</label>
                         <input type="text" class="form-input" x-model="categoryForm.name" required>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Іконка</label>
-                        <select class="form-select" x-model="categoryForm.icon">
-                            <option value="star">Зірка</option>
-                            <option value="coffee">Кава</option>
-                            <option value="cup">Напій</option>
-                            <option value="sun">Сніданок</option>
-                            <option value="sandwich">Сендвіч</option>
-                            <option value="leaf">Салат</option>
-                            <option value="bowl">Паста</option>
-                            <option value="burger">Бургер</option>
-                            <option value="pizza">Піца</option>
-                            <option value="cake">Десерт</option>
-                            <option value="tag">Тег</option>
-                        </select>
-                    </div>
+
                     <div class="form-group" x-show="projects.length > 0">
                         <label class="form-label">Проєкт</label>
                         <select class="form-select" x-model="categoryForm.project_id">
@@ -543,10 +535,6 @@
                                 <option :value="proj._id" x-text="proj.name"></option>
                             </template>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Порядок сортування</label>
-                        <input type="number" class="form-input" x-model="categoryForm.sort_order">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -557,7 +545,6 @@
             </form>
         </div>
     </div>
-</div>
 
 <style>
 @keyframes spin {
@@ -581,6 +568,25 @@
 }
 .category-pill:hover .pill-edit-icon { opacity: 0.65; }
 .pill-edit-icon:hover { opacity: 1 !important; background: rgba(0,0,0,0.08); }
+
+/* Drag handle */
+.drag-handle {
+    cursor: grab;
+    opacity: 0;
+    font-size: 0.9rem;
+    user-select: none;
+    padding-right: 2px;
+    color: var(--color-text-muted);
+    transition: opacity 0.15s;
+}
+.drag-handle:active { cursor: grabbing; }
+.category-pill:hover .drag-handle { opacity: 0.5; }
+
+/* Dragging state */
+.category-pill.pill-dragging {
+    opacity: 0.35;
+    cursor: grabbing;
+}
 
 /* Selected row in select mode */
 .dishes-table tbody tr.selected-row {
@@ -759,8 +765,8 @@ function assortmentApp() {
         selectedProject: null,
         editingProject: null,
         editingCategory: null,
-        categoryForm: { name: '', icon: 'tag', sort_order: 0, project_id: '' },
-        projectForm: { name: '', sort_order: 0 },
+        categoryForm: { name: '', project_id: '' },
+        projectForm: { name: '' },
 
         // Search
         searchQuery: '',
@@ -776,6 +782,10 @@ function assortmentApp() {
         currentPage: 1,
         itemsPerPage: 25,
         filteredItems: [],
+
+        // Drag state
+        dragProjIdx: null,
+        dragCatIdx: null,
 
         // UI state
         showOverflowMenu: false,
@@ -951,13 +961,13 @@ function assortmentApp() {
 
         openProjectModal() {
             this.editingProject = null;
-            this.projectForm = { name: '', sort_order: this.projects.length };
+            this.projectForm = { name: '' };
             this.showProjectModal = true;
         },
 
         openEditProjectModal(proj) {
             this.editingProject = proj;
-            this.projectForm = { name: proj.name, sort_order: proj.sort_order };
+            this.projectForm = { name: proj.name };
             this.showProjectModal = true;
         },
 
@@ -1007,13 +1017,13 @@ function assortmentApp() {
 
         openCategoryModal() {
             this.editingCategory = null;
-            this.categoryForm = { name: '', icon: 'tag', sort_order: this.categories.length, project_id: this.selectedProject || '' };
+            this.categoryForm = { name: '', project_id: this.selectedProject || '' };
             this.showCategoryModal = true;
         },
 
         openEditCategoryModal(cat) {
             this.editingCategory = cat;
-            this.categoryForm = { name: cat.name, icon: cat.icon || 'tag', sort_order: cat.sort_order, project_id: cat.project_id || '' };
+            this.categoryForm = { name: cat.name, project_id: cat.project_id || '' };
             this.showCategoryModal = true;
         },
 
@@ -1335,6 +1345,55 @@ function assortmentApp() {
             } catch (error) {
                 console.error('Error deleting product:', error);
             }
+        },
+
+        // ========== DRAG-AND-DROP SORTING ==========
+        swapProject(toIdx) {
+            if (this.dragProjIdx === null || this.dragProjIdx === toIdx) return;
+            const arr = [...this.projects];
+            [arr[this.dragProjIdx], arr[toIdx]] = [arr[toIdx], arr[this.dragProjIdx]];
+            this.projects = arr;
+            this.dragProjIdx = toIdx;
+        },
+
+        async saveProjectOrder() {
+            this.dragProjIdx = null;
+            const items = this.projects.map((p, i) => ({ id: p._id, sort_order: i }));
+            try {
+                await fetch('/api/projects/reorder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(items)
+                });
+            } catch (e) { console.error('Error saving project order:', e); }
+        },
+
+        swapCategory(toIdx) {
+            if (this.dragCatIdx === null || this.dragCatIdx === toIdx) return;
+            const visible = this.visibleCategories;
+            const catA = visible[this.dragCatIdx];
+            const catB = visible[toIdx];
+            if (!catA || !catB) return;
+            const idxA = this.categories.findIndex(c => c._id === catA._id);
+            const idxB = this.categories.findIndex(c => c._id === catB._id);
+            if (idxA === -1 || idxB === -1) return;
+            const arr = [...this.categories];
+            [arr[idxA], arr[idxB]] = [arr[idxB], arr[idxA]];
+            this.categories = arr;
+            this.dragCatIdx = toIdx;
+        },
+
+        async saveCategoryOrder() {
+            this.dragCatIdx = null;
+            const visible = this.visibleCategories;
+            const items = visible.map((c, i) => ({ id: c._id, sort_order: i }));
+            try {
+                await fetch('/api/categories/reorder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(items)
+                });
+            } catch (e) { console.error('Error saving category order:', e); }
         }
     };
 }

@@ -1,7 +1,7 @@
 DEMO_CATEGORIES = [
-    {"_id": "1", "name": "Кава", "icon": "coffee", "sort_order": 1},
-    {"_id": "2", "name": "Напої", "icon": "cup", "sort_order": 2},
-    {"_id": "3", "name": "Десерти", "icon": "cake", "sort_order": 3},
+    {"_id": "1", "name": "Кава", "sort_order": 1},
+    {"_id": "2", "name": "Напої", "sort_order": 2},
+    {"_id": "3", "name": "Десерти", "sort_order": 3},
 ]
 
 DEMO_PRODUCTS = [
